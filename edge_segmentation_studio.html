@@ -1,0 +1,2142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Digital Image Processing — Image Input Edge Segmentation & LoG / DoG Mathematics Studio</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #0b0f19;
+      color: #e2e8f0;
+    }
+    .mono {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .glass-card {
+      background: rgba(17, 24, 39, 0.88);
+      border: 1px solid rgba(51, 65, 85, 0.75);
+      border-radius: 0.75rem;
+    }
+    .matrix-input {
+      width: 100%;
+      text-align: center;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 0.375rem;
+      padding: 0.35rem 0.15rem;
+      color: #f8fafc;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.82rem;
+      transition: all 0.15s ease;
+    }
+    .matrix-input:focus {
+      outline: none;
+      border-color: #38bdf8;
+      box-shadow: 0 0 0 2px rgba(56, 189, 248, 0.25);
+    }
+    .matrix-center {
+      border-color: #f59e0b !important;
+      background: rgba(245, 158, 11, 0.14) !important;
+      font-weight: 700;
+      color: #fde68a !important;
+    }
+    .matrix-inner3x3 {
+      border-color: rgba(56, 189, 248, 0.45);
+    }
+    canvas.dip-canvas {
+      image-rendering: pixelated;
+      background: #020617;
+      border: 1px solid #334155;
+      border-radius: 0.5rem;
+      width: 100%;
+      height: auto;
+      aspect-ratio: 1 / 1;
+    }
+    .formula-box {
+      background: #090d16;
+      border-left: 3px solid #38bdf8;
+      padding: 0.75rem 1rem;
+      border-radius: 0.375rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      overflow-x: auto;
+    }
+    .dropzone-active {
+      border-color: #38bdf8 !important;
+      background: rgba(56, 189, 248, 0.12) !important;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-sky-500 selection:text-white">
+
+  <!-- Top Navigation Header -->
+  <header class="border-b border-slate-800 bg-slate-950/90 sticky top-0 z-30 backdrop-blur">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-sky-500 to-indigo-600 flex items-center justify-center font-bold text-white shadow">
+          ∇²G
+        </div>
+        <div>
+          <h1 class="text-base sm:text-lg font-bold text-white tracking-tight">
+            DIP Image Input Edge Segmentation &amp; LoG / DoG Mathematics Studio
+          </h1>
+          <p class="text-xs text-slate-400">
+            Upload Any Image &rarr; Get Segmented Outputs (LoG, DoG, Sobel, Prewitt, Kirsch) &amp; Live Math Calculations
+          </p>
+        </div>
+      </div>
+
+      <!-- Mode Navigation Tabs -->
+      <nav class="flex flex-wrap items-center gap-1.5 bg-slate-900 p-1 rounded-lg border border-slate-800">
+        <button id="tabBtnWorkbench" type="button" class="px-3 py-1.5 rounded-md text-xs font-semibold bg-sky-600 text-white transition">
+          1. Interactive Math &amp; Image Workbench
+        </button>
+        <button id="tabBtnTheory" type="button" class="px-3 py-1.5 rounded-md text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition">
+          2. LoG &amp; DoG Mathematical Derivations
+        </button>
+        <button id="tabBtnPython" type="button" class="px-3 py-1.5 rounded-md text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition">
+          3. Python Code Reference
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Toast Banner -->
+  <div id="statusToast" class="hidden fixed bottom-4 right-4 z-50 bg-emerald-600 text-white px-4 py-2.5 rounded-lg shadow-lg text-xs font-medium border border-emerald-400">
+    Calculation updated!
+  </div>
+
+  <!-- MAIN CONTENT CONTAINER -->
+  <main class="max-w-7xl w-full mx-auto px-4 py-5 flex-1 space-y-6">
+
+    <!-- ===================================================================== -->
+    <!-- VIEW 1: INTERACTIVE IMAGE INPUT & MATH WORKBENCH                      -->
+    <!-- ===================================================================== -->
+    <section id="viewWorkbench" class="space-y-6">
+
+      <!-- ================================================================= -->
+      <!-- STEP 1 HERO: UPLOAD / DRAG-AND-DROP IMAGE INPUT & SEGMENTATION    -->
+      <!-- ================================================================= -->
+      <div class="glass-card p-5 space-y-5 border-2 border-sky-500/40">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div>
+            <span class="text-xs font-semibold uppercase tracking-wider text-sky-400">Step 1 — Provide Your Input Image</span>
+            <h2 class="text-base sm:text-lg font-bold text-white">
+              Upload, Drag &amp; Drop, or Paste an Image for Edge-Based Segmentation
+            </h2>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="autoStrongestEdgeBtn" type="button" class="px-3 py-1.5 rounded-md bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold transition">
+              Auto-Locate Strongest Edge Pixel for Math
+            </button>
+            <button id="downloadComparisonBtn" type="button" class="px-3 py-1.5 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold transition">
+              Download All Outputs (PNG)
+            </button>
+          </div>
+        </div>
+
+        <!-- Prominent Drag-and-Drop Image Upload Box + Controls -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+          <!-- Drag & Drop Zone (7 cols) -->
+          <div id="imageDropZone" class="lg:col-span-7 border-2 border-dashed border-sky-500/60 hover:border-sky-400 bg-slate-900/70 rounded-xl p-5 flex flex-col justify-center items-center text-center transition cursor-pointer">
+            <div class="w-12 h-12 rounded-full bg-sky-500/20 border border-sky-400/40 flex items-center justify-center text-sky-300 text-xl font-bold mb-2">
+              &uarr;
+            </div>
+            <p class="text-sm font-bold text-white">
+              Click to Upload an Image, Drag &amp; Drop Here, or Press <span class="mono text-sky-300">Ctrl+V</span> to Paste
+            </p>
+            <p class="text-xs text-slate-400 mt-1">
+              Supports PNG, JPG, JPEG, WEBP, BMP, GIF — automatically converts RGB to luminance grayscale <span class="mono text-slate-300">I = 0.299R + 0.587G + 0.114B</span>
+            </p>
+            <div class="mt-3 flex flex-wrap items-center justify-center gap-2">
+              <label for="imageUploadInput" class="cursor-pointer px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold shadow transition">
+                Choose Image File from Computer...
+              </label>
+              <input id="imageUploadInput" type="file" accept="image/*" class="hidden" />
+              <span id="uploadedImageStatus" class="text-xs mono px-2.5 py-1 rounded bg-slate-950 border border-slate-800 text-emerald-300">
+                Active: Built-in Geometric Test Image (160&times;160)
+              </span>
+            </div>
+          </div>
+
+          <!-- Image Pre-Processing & Scene Options (5 cols) -->
+          <div class="lg:col-span-5 bg-slate-900/90 border border-slate-800 rounded-xl p-4 flex flex-col justify-between space-y-3">
+            <div class="text-xs font-bold text-slate-200 border-b border-slate-800 pb-1.5">
+              Image Input Settings &amp; Built-in DIP Test Scenes
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label for="testSceneSelect" class="block text-[11px] text-slate-400 mb-1">Or Select Sample DIP Image:</label>
+                <select id="testSceneSelect" class="w-full bg-slate-950 border border-slate-700 rounded-md px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-sky-500">
+                  <option value="geometric">Geometric Shapes &amp; Step Edges</option>
+                  <option value="concentric">Concentric Rings &amp; Target</option>
+                  <option value="checker_bars">Step Bars &amp; Checkerboard</option>
+                  <option value="micro_cells">Synthetic Biological Cells (Blobs)</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="imgResolutionSelect" class="block text-[11px] text-slate-400 mb-1">Processing Resolution:</label>
+                <select id="imgResolutionSelect" class="w-full bg-slate-950 border border-slate-700 rounded-md px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-sky-500">
+                  <option value="128">128 &times; 128 px (Fast)</option>
+                  <option value="160" selected>160 &times; 160 px (Standard)</option>
+                  <option value="224">224 &times; 224 px (High Detail)</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="noiseSigmaSelect" class="block text-[11px] text-slate-400 mb-1">Add Gaussian Noise (&sigma;<sub>n</sub>):</label>
+                <select id="noiseSigmaSelect" class="w-full bg-slate-950 border border-slate-700 rounded-md px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-sky-500">
+                  <option value="0">None (&sigma;_n = 0)</option>
+                  <option value="8">Low (&sigma;_n = 8)</option>
+                  <option value="18">Medium (&sigma;_n = 18)</option>
+                  <option value="32">High (&sigma;_n = 32)</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-[11px] text-slate-400 mb-1">Sampled Pixel Coordinate (x, y):</label>
+                <div class="flex items-center gap-1">
+                  <input id="probeXInput" type="number" min="0" max="223" value="72" class="w-1/2 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs mono text-amber-300" title="X coordinate" />
+                  <input id="probeYInput" type="number" min="0" max="223" value="45" class="w-1/2 bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs mono text-amber-300" title="Y coordinate" />
+                </div>
+              </div>
+            </div>
+
+            <div id="imageGlobalStatsBar" class="text-[11px] mono text-slate-300 bg-slate-950 px-3 py-1.5 rounded border border-slate-800 flex flex-wrap justify-between gap-2">
+              <span>Mean I: 72.4</span>
+              <span>Std &sigma;_I: 68.1</span>
+              <span class="text-amber-300">Click any pixel on Input Image to inspect its 5&times;5 math!</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 6-Canvas Output Grid (Input + LoG + DoG + Sobel + Prewitt + Kirsch) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+
+          <!-- 1. Original Grayscale Image -->
+          <div class="bg-slate-950 p-3 rounded-lg border border-amber-500/40 space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold text-white">1. Input Grayscale I(x, y)</span>
+              <div class="flex items-center gap-1.5">
+                <span id="probeCoordBadge" class="text-[11px] mono text-amber-300">Probed (72, 45)</span>
+                <button type="button" data-dlcanvas="canvasInput" data-dlname="input_grayscale.png" class="dl-canvas-btn text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Save</button>
+              </div>
+            </div>
+            <canvas id="canvasInput" width="160" height="160" class="dip-canvas cursor-crosshair"></canvas>
+            <div class="text-[11px] text-slate-400 flex justify-between">
+              <span id="inputResLabel">Resolution: 160&times;160 px</span>
+              <span id="inputStatsText" class="mono">Min: 0 | Max: 255</span>
+            </div>
+          </div>
+
+          <!-- 2. LoG Segmented Edges (Main Focus) -->
+          <div class="bg-slate-950 p-3 rounded-lg border-2 border-sky-500/60 space-y-2">
+            <div class="flex justify-between items-center gap-1">
+              <span class="text-xs font-bold text-sky-300">2. LoG (&nabla;&sup2;G<sub>&sigma;</sub>) Output ★</span>
+              <div class="flex items-center gap-1">
+                <select id="logDisplayMode" class="bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] text-slate-200">
+                  <option value="zc_binary">Zero-Crossing Edges</option>
+                  <option value="signed_heatmap">Signed LoG Response</option>
+                </select>
+                <button type="button" data-dlcanvas="canvasLog" data-dlname="log_segmented.png" class="dl-canvas-btn text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Save</button>
+              </div>
+            </div>
+            <canvas id="canvasLog" width="160" height="160" class="dip-canvas"></canvas>
+            <div class="text-[11px] text-slate-400 flex justify-between">
+              <span>Marr-Hildreth 2nd Order</span>
+              <span id="logEdgeCountText" class="mono text-sky-300">Edges: 0 px</span>
+            </div>
+          </div>
+
+          <!-- 3. DoG Segmented Edges (Main Focus) -->
+          <div class="bg-slate-950 p-3 rounded-lg border-2 border-emerald-500/60 space-y-2">
+            <div class="flex justify-between items-center gap-1">
+              <span class="text-xs font-bold text-emerald-300">3. DoG (G<sub>&sigma;1</sub> &minus; G<sub>&sigma;2</sub>) Output ★</span>
+              <div class="flex items-center gap-1">
+                <select id="dogDisplayMode" class="bg-slate-900 border border-slate-700 rounded px-1.5 py-0.5 text-[11px] text-slate-200">
+                  <option value="zc_binary">Zero-Crossing Edges</option>
+                  <option value="signed_heatmap">Signed DoG Response</option>
+                </select>
+                <button type="button" data-dlcanvas="canvasDog" data-dlname="dog_segmented.png" class="dl-canvas-btn text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Save</button>
+              </div>
+            </div>
+            <canvas id="canvasDog" width="160" height="160" class="dip-canvas"></canvas>
+            <div class="text-[11px] text-slate-400 flex justify-between">
+              <span>Band-Pass LoG Approx</span>
+              <span id="dogEdgeCountText" class="mono text-emerald-300">Edges: 0 px</span>
+            </div>
+          </div>
+
+          <!-- 4. Sobel Edge Detector -->
+          <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold text-amber-300">4. Sobel |G| = &radic;(G<sub>x</sub>&sup2;+G<sub>y</sub>&sup2;)</span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[11px] mono text-slate-400">3&times;3 Gradient</span>
+                <button type="button" data-dlcanvas="canvasSobel" data-dlname="sobel_edges.png" class="dl-canvas-btn text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Save</button>
+              </div>
+            </div>
+            <canvas id="canvasSobel" width="160" height="160" class="dip-canvas"></canvas>
+            <div class="text-[11px] text-slate-400 flex justify-between">
+              <span>Weighted Central Diff</span>
+              <span id="sobelEdgeCountText" class="mono text-amber-300">Edges: 0 px</span>
+            </div>
+          </div>
+
+          <!-- 5. Prewitt Edge Detector -->
+          <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold text-purple-300">5. Prewitt |G| = &radic;(G<sub>x</sub>&sup2;+G<sub>y</sub>&sup2;)</span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[11px] mono text-slate-400">3&times;3 Gradient</span>
+                <button type="button" data-dlcanvas="canvasPrewitt" data-dlname="prewitt_edges.png" class="dl-canvas-btn text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Save</button>
+              </div>
+            </div>
+            <canvas id="canvasPrewitt" width="160" height="160" class="dip-canvas"></canvas>
+            <div class="text-[11px] text-slate-400 flex justify-between">
+              <span>Uniform Box Smoothing</span>
+              <span id="prewittEdgeCountText" class="mono text-purple-300">Edges: 0 px</span>
+            </div>
+          </div>
+
+          <!-- 6. Kirsch Compass Operator -->
+          <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="text-xs font-bold text-rose-300">6. Kirsch Compass max<sub>k=0..7</sub> |I * M<sub>k</sub>|</span>
+              <div class="flex items-center gap-1.5">
+                <span class="text-[11px] mono text-slate-400">8 Directions</span>
+                <button type="button" data-dlcanvas="canvasKirsch" data-dlname="kirsch_edges.png" class="dl-canvas-btn text-[10px] px-1.5 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-300">Save</button>
+              </div>
+            </div>
+            <canvas id="canvasKirsch" width="160" height="160" class="dip-canvas"></canvas>
+            <div class="text-[11px] text-slate-400 flex justify-between">
+              <span>45&deg; Compass Masks</span>
+              <span id="kirschEdgeCountText" class="mono text-rose-300">Edges: 0 px</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- STEP 2: OPERATOR PARAMETERS & 5x5 PIXEL NEIGHBORHOOD EXTRACTOR    -->
+      <!-- ================================================================= -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+
+        <!-- Left Column (5 cols): 5x5 Pixel Patch Input (Synced with Uploaded Image Click!) -->
+        <div class="lg:col-span-5 glass-card p-4 space-y-4">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+            <div>
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-sky-400">Sampled Image Patch / Custom Matrix</span>
+              <h2 class="text-sm font-bold text-white">5&times;5 Grayscale Neighborhood I(x, y)</h2>
+            </div>
+            <span id="patchOriginBadge" class="text-[11px] px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 mono">
+              Center: (72, 45)
+            </span>
+          </div>
+
+          <p class="text-xs text-slate-300 leading-relaxed">
+            Clicking any pixel on your <strong class="text-white">uploaded image above</strong> loads its 5&times;5 pixel values here for exact step-by-step <strong class="text-sky-300">LoG &amp; DoG mathematical verification</strong>, or you can edit values directly:
+          </p>
+
+          <!-- Preset Matrix Buttons -->
+          <div class="flex flex-wrap gap-1.5">
+            <button type="button" data-preset="vertical_step" class="preset-btn px-2.5 py-1 rounded text-xs font-medium bg-slate-800 hover:bg-sky-600 text-slate-200 hover:text-white border border-slate-700 transition">
+              Vertical Step Edge
+            </button>
+            <button type="button" data-preset="diagonal_edge" class="preset-btn px-2.5 py-1 rounded text-xs font-medium bg-slate-800 hover:bg-sky-600 text-slate-200 hover:text-white border border-slate-700 transition">
+              Diagonal Edge
+            </button>
+            <button type="button" data-preset="horizontal_step" class="preset-btn px-2.5 py-1 rounded text-xs font-medium bg-slate-800 hover:bg-sky-600 text-slate-200 hover:text-white border border-slate-700 transition">
+              Horizontal Edge
+            </button>
+            <button type="button" data-preset="bright_spot" class="preset-btn px-2.5 py-1 rounded text-xs font-medium bg-slate-800 hover:bg-sky-600 text-slate-200 hover:text-white border border-slate-700 transition">
+              Isolated Bright Spot
+            </button>
+            <button type="button" data-preset="roof_edge" class="preset-btn px-2.5 py-1 rounded text-xs font-medium bg-slate-800 hover:bg-sky-600 text-slate-200 hover:text-white border border-slate-700 transition">
+              Roof / Line Edge
+            </button>
+          </div>
+
+          <!-- 5x5 Matrix Grid -->
+          <div class="bg-slate-950/90 p-3 rounded-lg border border-slate-800">
+            <div class="grid grid-cols-5 gap-1.5" id="matrixGridContainer">
+              <!-- Populated by JS -->
+            </div>
+            <div class="mt-2.5 flex items-center justify-between text-[11px] text-slate-400">
+              <span><span class="inline-block w-2.5 h-2.5 rounded-sm bg-amber-500/40 border border-amber-400 mr-1 align-middle"></span>Center Pixel I(x<sub>0</sub>,y<sub>0</sub>)</span>
+              <span><span class="inline-block w-2.5 h-2.5 rounded-sm border border-sky-400/70 mr-1 align-middle"></span>Inner 3&times;3 Window (Sobel/Prewitt/Kirsch)</span>
+            </div>
+          </div>
+
+          <!-- Custom CSV / Quick Paste Row -->
+          <div class="space-y-1.5 pt-1">
+            <label for="quickMatrixInput" class="block text-xs font-medium text-slate-300">
+              Or paste 25 comma/space-separated pixel values (5&times;5 row-major):
+            </label>
+            <div class="flex gap-2">
+              <input id="quickMatrixInput" type="text" placeholder="20, 20, 100, 200, 200, ..." class="flex-1 bg-slate-900 border border-slate-700 rounded-md px-2.5 py-1.5 text-xs mono text-slate-200 focus:outline-none focus:border-sky-500" />
+              <button id="applyQuickMatrixBtn" type="button" class="px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-md text-xs font-semibold transition">
+                Apply Input
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column (7 cols): LoG, DoG & First-Order Operator Parameters + Radial Kernel Plot -->
+        <div class="lg:col-span-7 glass-card p-4 space-y-4">
+          <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-2.5">
+            <div>
+              <span class="text-[11px] font-semibold uppercase tracking-wider text-indigo-400">Second-Order &amp; Gradient Parameters</span>
+              <h2 class="text-sm font-bold text-white">LoG (&nabla;&sup2;G<sub>&sigma;</sub>) &amp; DoG (G<sub>&sigma;1</sub> &minus; G<sub>&sigma;2</sub>) Controls</h2>
+            </div>
+            <div class="flex items-center gap-2">
+              <span id="dogRatioBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 mono">
+                DoG Ratio k = &sigma;2/&sigma;1 = 1.60 (Optimal LoG Approx)
+              </span>
+            </div>
+          </div>
+
+          <!-- Parameter Sliders Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            <!-- LoG Sigma Control -->
+            <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800 space-y-2">
+              <div class="flex justify-between items-center text-xs">
+                <label for="sigmaLogInput" class="font-semibold text-sky-300">LoG Scale &sigma;<sub>LoG</sub></label>
+                <span id="sigmaLogVal" class="mono font-bold text-white">1.00</span>
+              </div>
+              <input id="sigmaLogInput" type="range" min="0.50" max="2.50" step="0.05" value="1.00" class="w-full accent-sky-500 cursor-pointer" />
+              <div class="flex items-center justify-between pt-1">
+                <label for="logKernelModeSelect" class="text-[11px] text-slate-400">LoG 5&times;5 Kernel Type:</label>
+                <select id="logKernelModeSelect" class="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 focus:outline-none focus:border-sky-500">
+                  <option value="analytical">Analytical Zero-Mean LoG(&sigma;)</option>
+                  <option value="mexican_hat">Discrete 5&times;5 Mexican Hat (Int)</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- DoG Sigma1 & Sigma2 Controls -->
+            <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800 space-y-2">
+              <div class="flex justify-between items-center text-xs">
+                <label for="sigma1DogInput" class="font-semibold text-emerald-300">DoG Narrow Scale &sigma;<sub>1</sub></label>
+                <span id="sigma1DogVal" class="mono font-bold text-white">1.00</span>
+              </div>
+              <input id="sigma1DogInput" type="range" min="0.40" max="2.00" step="0.05" value="1.00" class="w-full accent-emerald-500 cursor-pointer" />
+
+              <div class="flex justify-between items-center text-xs pt-1">
+                <label for="sigma2DogInput" class="font-semibold text-amber-300">DoG Wide Scale &sigma;<sub>2</sub></label>
+                <span id="sigma2DogVal" class="mono font-bold text-white">1.60</span>
+              </div>
+              <input id="sigma2DogInput" type="range" min="0.60" max="3.20" step="0.05" value="1.60" class="w-full accent-amber-500 cursor-pointer" />
+            </div>
+
+            <!-- Zero-Crossing & Gradient Thresholds -->
+            <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800 space-y-2">
+              <div class="flex justify-between items-center text-xs">
+                <label for="zcThresholdInput" class="font-semibold text-purple-300">LoG / DoG Zero-Crossing Slope T<sub>zc</sub></label>
+                <span id="zcThresholdVal" class="mono font-bold text-white">1.50</span>
+              </div>
+              <input id="zcThresholdInput" type="range" min="0.10" max="30.0" step="0.10" value="1.50" class="w-full accent-purple-500 cursor-pointer" />
+              <p class="text-[11px] text-slate-400">
+                Minimum opposite-neighbor difference |R(p) &minus; R(q)| to mark a valid zero-crossing edge.
+              </p>
+            </div>
+
+            <!-- First-Order Gradient Threshold -->
+            <div class="bg-slate-900/90 p-3 rounded-lg border border-slate-800 space-y-2">
+              <div class="flex justify-between items-center text-xs">
+                <label for="gradThresholdInput" class="font-semibold text-rose-300">First-Order Edge Threshold T<sub>grad</sub></label>
+                <span id="gradThresholdVal" class="mono font-bold text-white">80</span>
+              </div>
+              <input id="gradThresholdInput" type="range" min="10" max="400" step="5" value="80" class="w-full accent-rose-500 cursor-pointer" />
+              <p class="text-[11px] text-slate-400">
+                Threshold applied to Sobel |G|, Prewitt |G|, and Kirsch (scaled 2.2&times;) on full images.
+              </p>
+            </div>
+          </div>
+
+          <!-- 1D Radial Cross-Section Plot: LoG vs DoG Mexican Hat Profile -->
+          <div class="bg-slate-950/80 p-3 rounded-lg border border-slate-800">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-semibold text-slate-200">
+                Continuous Radial Cross-Section Profile: &minus;&nabla;&sup2;G<sub>&sigma;</sub>(r) vs. DoG(r) = G<sub>&sigma;1</sub>(r) &minus; G<sub>&sigma;2</sub>(r)
+              </span>
+              <button id="lockMarrRatioBtn" type="button" class="text-[11px] px-2 py-0.5 rounded bg-slate-800 hover:bg-indigo-600 text-slate-300 hover:text-white border border-slate-700 transition">
+                Set &sigma;<sub>2</sub> = 1.6 &sigma;<sub>1</sub> (Marr-Hildreth)
+              </button>
+            </div>
+            <div class="relative h-48">
+              <canvas id="radialProfileChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================= -->
+      <!-- STEP 3: STEP-BY-STEP MATHEMATICAL CALCULATIONS (FOCUS: LoG & DoG) -->
+      <!-- ================================================================= -->
+      <div class="glass-card p-5 space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+          <div>
+            <span class="text-xs font-semibold uppercase tracking-wider text-amber-400">Step 3 — Live Mathematical Breakdown on Sampled 5&times;5 Image Patch</span>
+            <h2 class="text-base font-bold text-white">
+              Step-by-Step Convolution, Zero-Crossing &amp; Gradient Calculations
+            </h2>
+          </div>
+
+          <!-- Operator Math Filter Tabs -->
+          <div class="flex flex-wrap gap-1.5" id="mathSubTabs">
+            <button type="button" data-mathtab="log" class="math-tab-btn px-3 py-1.5 rounded-md text-xs font-semibold bg-sky-600 text-white transition">
+              LoG (Laplacian of Gaussian) ★
+            </button>
+            <button type="button" data-mathtab="dog" class="math-tab-btn px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-800 text-slate-300 hover:text-white transition">
+              DoG (Difference of Gaussians) ★
+            </button>
+            <button type="button" data-mathtab="sobel_prewitt" class="math-tab-btn px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-800 text-slate-300 hover:text-white transition">
+              Sobel &amp; Prewitt (1st Order)
+            </button>
+            <button type="button" data-mathtab="kirsch" class="math-tab-btn px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-800 text-slate-300 hover:text-white transition">
+              Kirsch (8 Compass Masks)
+            </button>
+          </div>
+        </div>
+
+        <!-- Summary KPI Strip for Center Pixel (2, 2) -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div class="bg-slate-900/90 border border-sky-500/40 rounded-lg p-3">
+            <div class="text-[11px] text-sky-400 font-semibold">LoG Response R<sub>LoG</sub>(2,2)</div>
+            <div id="kpiLogResp" class="text-lg font-bold text-white mono mt-0.5">0.000</div>
+            <div id="kpiLogZc" class="text-[11px] text-slate-400 mt-0.5">ZC Slope: 0.00</div>
+          </div>
+          <div class="bg-slate-900/90 border border-emerald-500/40 rounded-lg p-3">
+            <div class="text-[11px] text-emerald-400 font-semibold">DoG Response R<sub>DoG</sub>(2,2)</div>
+            <div id="kpiDogResp" class="text-lg font-bold text-white mono mt-0.5">0.000</div>
+            <div id="kpiDogZc" class="text-[11px] text-slate-400 mt-0.5">ZC Slope: 0.00</div>
+          </div>
+          <div class="bg-slate-900/90 border border-slate-700 rounded-lg p-3">
+            <div class="text-[11px] text-amber-400 font-semibold">Sobel |G|(2,2)</div>
+            <div id="kpiSobelMag" class="text-lg font-bold text-white mono mt-0.5">0.00</div>
+            <div id="kpiSobelDir" class="text-[11px] text-slate-400 mt-0.5">&theta; = 0.0&deg;</div>
+          </div>
+          <div class="bg-slate-900/90 border border-slate-700 rounded-lg p-3">
+            <div class="text-[11px] text-purple-400 font-semibold">Prewitt |G|(2,2)</div>
+            <div id="kpiPrewittMag" class="text-lg font-bold text-white mono mt-0.5">0.00</div>
+            <div id="kpiPrewittDir" class="text-[11px] text-slate-400 mt-0.5">&theta; = 0.0&deg;</div>
+          </div>
+          <div class="bg-slate-900/90 border border-slate-700 rounded-lg p-3 col-span-2 sm:col-span-1">
+            <div class="text-[11px] text-rose-400 font-semibold">Kirsch Max M(2,2)</div>
+            <div id="kpiKirschMag" class="text-lg font-bold text-white mono mt-0.5">0.00</div>
+            <div id="kpiKirschDir" class="text-[11px] text-slate-400 mt-0.5">Dir: East</div>
+          </div>
+        </div>
+
+        <!-- Dynamic Math Content Containers -->
+        <!-- 1. LoG Math Breakdown -->
+        <div id="mathPanelLog" class="space-y-4">
+          <div class="formula-box text-slate-200 space-y-1">
+            <div class="text-sky-400 font-semibold">// Laplacian of Gaussian (Marr-Hildreth) Mathematical Formulation:</div>
+            <div>G<sub>&sigma;</sub>(x, y) = [1 / (2&pi;&sigma;&sup2;)] &middot; exp(&minus;(x&sup2; + y&sup2;) / (2&sigma;&sup2;))</div>
+            <div>&nabla;&sup2;G<sub>&sigma;</sub>(x, y) = &part;&sup2;G<sub>&sigma;</sub>/&part;x&sup2; + &part;&sup2;G<sub>&sigma;</sub>/&part;y&sup2; = &minus;[1 / (&pi;&sigma;<sup>4</sup>)] &middot; [1 &minus; (x&sup2; + y&sup2;) / (2&sigma;&sup2;)] &middot; exp(&minus;(x&sup2; + y&sup2;) / (2&sigma;&sup2;))</div>
+            <div>R<sub>LoG</sub>(x, y) = &sum;<sub>u=&minus;2..2</sub> &sum;<sub>v=&minus;2..2</sub> K<sub>LoG</sub>(u, v) &middot; I(x + u, y + v)</div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <!-- LoG 5x5 Kernel Table -->
+            <div class="bg-slate-950 p-3.5 rounded-lg border border-slate-800">
+              <h3 class="text-xs font-bold text-sky-300 mb-2">Step 1: 5&times;5 LoG Kernel K<sub>LoG</sub>(u, v)</h3>
+              <div id="logKernelMatrixView" class="mono text-xs overflow-x-auto"></div>
+              <div id="logKernelSumNote" class="text-[11px] text-slate-400 mt-2 mono"></div>
+            </div>
+
+            <!-- Element-wise Multiplication Table -->
+            <div class="bg-slate-950 p-3.5 rounded-lg border border-slate-800">
+              <h3 class="text-xs font-bold text-amber-300 mb-2">Step 2: Product I(2+u, 2+v) &middot; K<sub>LoG</sub>(u, v)</h3>
+              <div id="logProductMatrixView" class="mono text-xs overflow-x-auto"></div>
+              <div id="logCenterSumEquation" class="text-[11px] text-amber-200 mt-2 mono"></div>
+            </div>
+
+            <!-- Full 5x5 LoG Response & Zero-Crossing Table -->
+            <div class="bg-slate-950 p-3.5 rounded-lg border border-slate-800">
+              <h3 class="text-xs font-bold text-emerald-300 mb-2">Step 3: 5&times;5 Convolved R<sub>LoG</sub> &amp; Zero-Crossings</h3>
+              <div id="logResponseMatrixView" class="mono text-xs overflow-x-auto"></div>
+              <div id="logZeroCrossingDetails" class="text-[11px] text-slate-300 mt-2 space-y-1 mono"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. DoG Math Breakdown -->
+        <div id="mathPanelDog" class="hidden space-y-4">
+          <div class="formula-box text-slate-200 space-y-1">
+            <div class="text-emerald-400 font-semibold">// Difference of Gaussians (DoG) Mathematical Formulation &amp; Heat Equation Link to LoG:</div>
+            <div>G<sub>&sigma;1</sub>(x,y) = [1 / (2&pi;&sigma;<sub>1</sub>&sup2;)] exp(&minus;(x&sup2;+y&sup2;)/(2&sigma;<sub>1</sub>&sup2;)), &nbsp;&nbsp; G<sub>&sigma;2</sub>(x,y) = [1 / (2&pi;&sigma;<sub>2</sub>&sup2;)] exp(&minus;(x&sup2;+y&sup2;)/(2&sigma;<sub>2</sub>&sup2;))</div>
+            <div>K<sub>DoG</sub>(x, y) = G<sub>&sigma;1</sub>(x, y) &minus; G<sub>&sigma;2</sub>(x, y) &approx; &minus;(k &minus; 1)&sigma;<sub>1</sub>&sup2; &nabla;&sup2;G<sub>&sigma;1</sub>(x, y) &nbsp;&nbsp; [where k = &sigma;<sub>2</sub> / &sigma;<sub>1</sub>]</div>
+            <div>R<sub>DoG</sub>(x, y) = (I * G<sub>&sigma;1</sub>)(x, y) &minus; (I * G<sub>&sigma;2</sub>)(x, y) = &sum;<sub>u,v</sub> K<sub>DoG</sub>(u, v) &middot; I(x + u, y + v)</div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div class="bg-slate-950 p-3.5 rounded-lg border border-slate-800">
+              <h3 class="text-xs font-bold text-emerald-300 mb-2">Step 1: Narrow Gaussian G<sub>&sigma;1</sub> vs. Wide G<sub>&sigma;2</sub></h3>
+              <div id="dogGaussiansView" class="mono text-xs space-y-2 overflow-x-auto"></div>
+            </div>
+
+            <div class="bg-slate-950 p-3.5 rounded-lg border border-slate-800">
+              <h3 class="text-xs font-bold text-amber-300 mb-2">Step 2: DoG Kernel K<sub>DoG</sub> = G<sub>&sigma;1</sub> &minus; G<sub>&sigma;2</sub></h3>
+              <div id="dogKernelMatrixView" class="mono text-xs overflow-x-auto"></div>
+              <div id="dogSubtractionMath" class="text-[11px] text-amber-200 mt-2 mono space-y-1"></div>
+            </div>
+
+            <div class="bg-slate-950 p-3.5 rounded-lg border border-slate-800">
+              <h3 class="text-xs font-bold text-sky-300 mb-2">Step 3: 5&times;5 R<sub>DoG</sub> Map &amp; Zero-Crossing Check</h3>
+              <div id="dogResponseMatrixView" class="mono text-xs overflow-x-auto"></div>
+              <div id="dogZeroCrossingDetails" class="text-[11px] text-slate-300 mt-2 space-y-1 mono"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Sobel & Prewitt Math Breakdown -->
+        <div id="mathPanelSobelPrewitt" class="hidden space-y-4">
+          <div class="formula-box text-slate-200 space-y-1">
+            <div class="text-amber-400 font-semibold">// First-Order Gradient Operators (Sobel &amp; Prewitt) on Inner 3&times;3 Neighborhood:</div>
+            <div>G<sub>x</sub> = &part;I/&part;x = &sum; K<sub>x</sub>(u,v) I(2+u, 2+v), &nbsp;&nbsp; G<sub>y</sub> = &part;I/&part;y = &sum; K<sub>y</sub>(u,v) I(2+u, 2+v)</div>
+            <div>Magnitude |G| = &radic;(G<sub>x</sub>&sup2; + G<sub>y</sub>&sup2;), &nbsp;&nbsp; L<sub>1</sub> Approx = |G<sub>x</sub>| + |G<sub>y</sub>|, &nbsp;&nbsp; Orientation &theta; = atan2(G<sub>y</sub>, G<sub>x</sub>)</div>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-2" id="sobelMathBox"></div>
+            <div class="bg-slate-950 p-4 rounded-lg border border-slate-800 space-y-2" id="prewittMathBox"></div>
+          </div>
+        </div>
+
+        <!-- 4. Kirsch 8-Compass Masks Breakdown -->
+        <div id="mathPanelKirsch" class="hidden space-y-4">
+          <div class="formula-box text-slate-200 space-y-1">
+            <div class="text-rose-400 font-semibold">// Kirsch Compass Operator (8 Directional 3&times;3 Masks Rotated by 45&deg;):</div>
+            <div>R<sub>k</sub>(x,y) = &sum;<sub>u=&minus;1..1</sub> &sum;<sub>v=&minus;1..1</sub> M<sub>k</sub>(u,v) &middot; I(x+u, y+v) &nbsp; for k &isin; {0..7} (N, NW, W, SW, S, SE, E, NE)</div>
+            <div>Kirsch Edge Magnitude M(x,y) = max<sub>k=0..7</sub> |R<sub>k</sub>(x,y)|, &nbsp;&nbsp; Dominant Edge Orientation = argmax<sub>k</sub> R<sub>k</sub>(x,y) &times; 45&deg;</div>
+          </div>
+          <div id="kirschMasksGrid" class="grid grid-cols-2 sm:grid-cols-4 gap-3"></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- VIEW 2: LoG & DoG COMPLETE MATHEMATICAL DERIVATIONS & COMPARISON      -->
+    <!-- ===================================================================== -->
+    <section id="viewTheory" class="hidden space-y-6">
+      <div class="glass-card p-6 space-y-5">
+        <div class="border-b border-slate-800 pb-3">
+          <span class="text-xs font-semibold uppercase tracking-wider text-sky-400">Digital Image Processing Theory</span>
+          <h2 class="text-lg font-bold text-white mt-0.5">
+            Complete Mathematical Formulations: LoG, DoG, Sobel, Prewitt &amp; Kirsch
+          </h2>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+          <!-- LoG Mathematical Derivation Card -->
+          <div class="bg-slate-950 p-4 rounded-lg border border-sky-500/40 space-y-3">
+            <h3 class="text-sm font-bold text-sky-300">
+              1. Laplacian of Gaussian (LoG — Marr-Hildreth Operator)
+            </h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              Second-order derivatives (\(\nabla^2 I = I_{xx} + I_{yy}\)) locate edges at <strong class="text-white">zero-crossings</strong> (inflection points of intensity steps), yielding thin 1-pixel closed contours. However, bare second derivatives amplify high-frequency noise. Marr &amp; Hildreth solved this by smoothing \(I(x,y)\) with a 2D Gaussian \(G_\sigma(x,y)\) prior to applying the Laplacian:
+            </p>
+            <div class="formula-box space-y-1.5 text-slate-200">
+              <div>(1) 2D Gaussian Filter:</div>
+              <div class="text-sky-300 pl-3">G<sub>&sigma;</sub>(x, y) = [1 / (2&pi;&sigma;&sup2;)] &middot; exp(&minus;(x&sup2; + y&sup2;) / (2&sigma;&sup2;))</div>
+              <div>(2) By Derivative Property of Convolution:</div>
+              <div class="text-sky-300 pl-3">&nabla;&sup2; [G<sub>&sigma;</sub>(x, y) * I(x, y)] = [&nabla;&sup2;G<sub>&sigma;</sub>(x, y)] * I(x, y)</div>
+              <div>(3) First Partial Derivatives:</div>
+              <div class="pl-3">&part;G<sub>&sigma;</sub>/&part;x = &minus;[x / (2&pi;&sigma;<sup>4</sup>)] &middot; exp(&minus;(x&sup2; + y&sup2;) / (2&sigma;&sup2;))</div>
+              <div>(4) Second Partial Derivatives:</div>
+              <div class="pl-3">&part;&sup2;G<sub>&sigma;</sub>/&part;x&sup2; = [(x&sup2; &minus; &sigma;&sup2;) / (2&pi;&sigma;<sup>6</sup>)] &middot; exp(&minus;(x&sup2; + y&sup2;) / (2&sigma;&sup2;))</div>
+              <div class="pl-3">&part;&sup2;G<sub>&sigma;</sub>/&part;y&sup2; = [(y&sup2; &minus; &sigma;&sup2;) / (2&pi;&sigma;<sup>6</sup>)] &middot; exp(&minus;(x&sup2; + y&sup2;) / (2&sigma;&sup2;))</div>
+              <div>(5) Summing &part;&sup2;G/&part;x&sup2; + &part;&sup2;G/&part;y&sup2; yields the Mexican Hat (LoG) Kernel:</div>
+              <div class="text-amber-300 font-semibold pl-3">
+                LoG(x, y) = &minus;[1 / (&pi;&sigma;<sup>4</sup>)] &middot; [1 &minus; (x&sup2; + y&sup2;)/(2&sigma;&sup2;)] &middot; exp(&minus;(x&sup2; + y&sup2;)/(2&sigma;&sup2;))
+              </div>
+            </div>
+            <p class="text-xs text-slate-400">
+              Zero-crossings of \(\text{LoG}(x, y)\) occur on the circle \(x^2 + y^2 = 2\sigma^2\) (radius \(r = \sqrt{2}\sigma\)). In discrete grids, we subtract the sample mean so \(\sum_{u,v} K_{\text{LoG}}(u,v) = 0\).
+            </p>
+          </div>
+
+          <!-- DoG Mathematical Derivation Card -->
+          <div class="bg-slate-950 p-4 rounded-lg border border-emerald-500/40 space-y-3">
+            <h3 class="text-sm font-bold text-emerald-300">
+              2. Difference of Gaussians (DoG) &amp; Heat Equation Equivalence Proof
+            </h3>
+            <p class="text-xs text-slate-300 leading-relaxed">
+              The Difference of Gaussians (DoG) operator approximates the Laplacian of Gaussian by subtracting two Gaussian-smoothed images at different scales \(\sigma_1\) and \(\sigma_2 = k\sigma_1\) (where \(k &gt; 1\)). Because 2D Gaussians are separable into 1D row and column passes, DoG reduces computational cost from \(O(M^2)\) to \(O(2M)\) per pixel:
+            </p>
+            <div class="formula-box space-y-1.5 text-slate-200">
+              <div>(1) Definition of DoG Filter:</div>
+              <div class="text-emerald-300 pl-3">
+                DoG(x, y; &sigma;<sub>1</sub>, &sigma;<sub>2</sub>) = G<sub>&sigma;1</sub>(x, y) &minus; G<sub>&sigma;2</sub>(x, y)
+              </div>
+              <div>(2) Partial Derivative of Gaussian with respect to Scale &sigma;:</div>
+              <div class="pl-3">
+                &part;G<sub>&sigma;</sub>/&part;&sigma; = [(x&sup2; + y&sup2; &minus; 2&sigma;&sup2;) / (2&pi;&sigma;<sup>5</sup>)] &middot; exp(&minus;(x&sup2;+y&sup2;)/(2&sigma;&sup2;)) = &sigma; &middot; &nabla;&sup2;G<sub>&sigma;</sub>(x, y)
+              </div>
+              <div>(3) Finite Difference Approximation for &sigma;<sub>2</sub> = k&sigma;<sub>1</sub>:</div>
+              <div class="pl-3">
+                (G<sub>k&sigma;</sub> &minus; G<sub>&sigma;</sub>) / (k&sigma; &minus; &sigma;) &approx; &part;G<sub>&sigma;</sub>/&part;&sigma; = &sigma; &nabla;&sup2;G<sub>&sigma;</sub>
+              </div>
+              <div>(4) Resulting Proportionality between DoG and LoG:</div>
+              <div class="text-amber-300 font-semibold pl-3">
+                G<sub>&sigma;1</sub>(x,y) &minus; G<sub>&sigma;2</sub>(x,y) &approx; &minus;(k &minus; 1)&sigma;<sub>1</sub>&sup2; &nabla;&sup2;G<sub>&sigma;1</sub>(x,y)
+              </div>
+            </div>
+            <p class="text-xs text-slate-400">
+              Marr &amp; Hildreth (1980) showed that a scale ratio of <strong class="text-white">\(k = \sigma_2 / \sigma_1 \approx 1.6\)</strong> provides the closest engineering match to the biological retinal ganglion bandwidth and true \(\nabla^2 G_\sigma\).
+            </p>
+          </div>
+        </div>
+
+        <!-- Comparison Table of All 5 Operators -->
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-900 text-slate-200 border-b border-slate-700">
+                <th class="p-2.5 font-semibold">Operator</th>
+                <th class="p-2.5 font-semibold">Derivative Order</th>
+                <th class="p-2.5 font-semibold">Mathematical Definition</th>
+                <th class="p-2.5 font-semibold">Edge Localization Rule</th>
+                <th class="p-2.5 font-semibold">Noise Robustness &amp; Key Property</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-800 text-slate-300">
+              <tr>
+                <td class="p-2.5 font-bold text-amber-300">Sobel</td>
+                <td class="p-2.5">1st Order (\(\nabla I\))</td>
+                <td class="p-2.5 mono">\(|G| = \sqrt{(I*S_x)^2 + (I*S_y)^2}\)</td>
+                <td class="p-2.5">Gradient Magnitude Threshold \(|G| \ge T\)</td>
+                <td class="p-2.5">[1, 2, 1] binomial smoothing weights center row/col; good isotropic angle accuracy.</td>
+              </tr>
+              <tr>
+                <td class="p-2.5 font-bold text-purple-300">Prewitt</td>
+                <td class="p-2.5">1st Order (\(\nabla I\))</td>
+                <td class="p-2.5 mono">\(|G| = \sqrt{(I*P_x)^2 + (I*P_y)^2}\)</td>
+                <td class="p-2.5">Gradient Magnitude Threshold \(|G| \ge T\)</td>
+                <td class="p-2.5">[1, 1, 1] uniform box average; simpler arithmetic, slightly more sensitive to diagonal noise.</td>
+              </tr>
+              <tr>
+                <td class="p-2.5 font-bold text-rose-300">Kirsch</td>
+                <td class="p-2.5">1st Order Compass</td>
+                <td class="p-2.5 mono">\(M = \max_{k=0..7} |I * K_k|\)</td>
+                <td class="p-2.5">Max Directional Response \(M \ge T\)</td>
+                <td class="p-2.5">8 rotated \(3\times 3\) masks (\(45^\circ\) steps); directly yields quantized compass orientation.</td>
+              </tr>
+              <tr class="bg-sky-950/20">
+                <td class="p-2.5 font-bold text-sky-300">LoG ★</td>
+                <td class="p-2.5">2nd Order (\(\nabla^2 G_\sigma\))</td>
+                <td class="p-2.5 mono">\(R = (\nabla^2 G_\sigma) * I\)</td>
+                <td class="p-2.5">Zero-Crossing with slope \(|R(p)-R(q)| \ge T_{zc}\)</td>
+                <td class="p-2.5">Isotropic; tunable scale \(\sigma\); produces thin, connected, closed 1-pixel edge contours.</td>
+              </tr>
+              <tr class="bg-emerald-950/20">
+                <td class="p-2.5 font-bold text-emerald-300">DoG ★</td>
+                <td class="p-2.5">2nd Order Approx</td>
+                <td class="p-2.5 mono">\(R = (G_{\sigma_1} - G_{\sigma_2}) * I\)</td>
+                <td class="p-2.5">Zero-Crossing or Band-Pass Threshold</td>
+                <td class="p-2.5">Separable 1D Gaussian passes; approximates LoG at \(\sigma_2/\sigma_1 \approx 1.6\); cornerstone of SIFT.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- VIEW 3: PYTHON CODE REFERENCE                                         -->
+    <!-- ===================================================================== -->
+    <section id="viewPython" class="hidden space-y-4">
+      <div class="glass-card p-5 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 pb-3">
+          <div>
+            <span class="text-xs font-semibold uppercase tracking-wider text-sky-400">Standalone Python Implementation (Image Input &rarr; Output)</span>
+            <h2 class="text-base font-bold text-white">edge_segmentation.py — Reads Any Input Image &amp; Outputs All 5 Edge Maps + Math</h2>
+          </div>
+          <button id="copyPythonCodeBtn" type="button" class="px-3 py-1.5 rounded-md bg-sky-600 hover:bg-sky-500 text-white text-xs font-semibold transition">
+            Copy Python Code
+          </button>
+        </div>
+        <pre id="pythonCodeBlock" class="bg-slate-950 p-4 rounded-lg border border-slate-800 text-xs mono text-slate-200 overflow-x-auto leading-relaxed max-h-[540px] overflow-y-auto">import cv2
+import math
+import numpy as np
+
+# Load any input image in grayscale:
+# img = cv2.imread("your_input_image.jpg", cv2.IMREAD_GRAYSCALE)
+
+# 1. SOBEL & PREWITT 3x3 KERNELS
+SOBEL_GX = np.array([[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]], dtype=np.float64)
+SOBEL_GY = np.array([[-1, -2, -1], [0, 0, 0], [1, 2, 1]], dtype=np.float64)
+
+PREWITT_GX = np.array([[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]], dtype=np.float64)
+PREWITT_GY = np.array([[-1, -1, -1], [0, 0, 0], [1, 1, 1]], dtype=np.float64)
+
+# 2. KIRSCH 8 COMPASS MASKS (45-DEGREE ROTATIONS)
+KIRSCH_MASKS = [
+    np.array([[ 5,  5,  5], [-3, 0, -3], [-3, -3, -3]], dtype=np.float64), # N  (0 deg)
+    np.array([[ 5,  5, -3], [ 5, 0, -3], [-3, -3, -3]], dtype=np.float64), # NW (45 deg)
+    np.array([[ 5, -3, -3], [ 5, 0, -3], [ 5, -3, -3]], dtype=np.float64), # W  (90 deg)
+    np.array([[-3, -3, -3], [ 5, 0, -3], [ 5,  5, -3]], dtype=np.float64), # SW (135 deg)
+    np.array([[-3, -3, -3], [-3, 0, -3], [ 5,  5,  5]], dtype=np.float64), # S  (180 deg)
+    np.array([[-3, -3, -3], [-3, 0,  5], [-3,  5,  5]], dtype=np.float64), # SE (225 deg)
+    np.array([[-3, -3,  5], [-3, 0,  5], [-3, -3,  5]], dtype=np.float64), # E  (270 deg)
+    np.array([[-3,  5,  5], [-3, 0,  5], [-3, -3, -3]], dtype=np.float64), # NE (315 deg)
+]
+
+# 3. LAPLACIAN OF GAUSSIAN (LoG) KERNEL GENERATOR
+def generate_log_kernel(size: int, sigma: float) -> np.ndarray:
+    half = size // 2
+    y, x = np.mgrid[-half:half+1, -half:half+1]
+    r2 = x**2 + y**2
+    raw = -(1.0 / (math.pi * sigma**4)) * (1.0 - r2 / (2.0 * sigma**2)) * np.exp(-r2 / (2.0 * sigma**2))
+    return raw - np.mean(raw)  # Zero-mean normalization so sum(K_LoG) == 0
+
+# 4. DIFFERENCE OF GAUSSIANS (DoG) KERNEL GENERATOR
+def generate_gaussian_kernel(size: int, sigma: float) -> np.ndarray:
+    half = size // 2
+    y, x = np.mgrid[-half:half+1, -half:half+1]
+    g = np.exp(-(x**2 + y**2) / (2.0 * sigma**2)) / (2.0 * math.pi * sigma**2)
+    return g / np.sum(g)
+
+def generate_dog_kernel(size: int, sigma1: float, sigma2: float) -> np.ndarray:
+    return generate_gaussian_kernel(size, sigma1) - generate_gaussian_kernel(size, sigma2)
+
+# 5. MARR-HILDRETH ZERO-CROSSING DETECTOR (FOR LoG & DoG)
+def detect_zero_crossings(response: np.ndarray, slope_threshold: float = 1.0) -> np.ndarray:
+    h, w = response.shape
+    p = np.pad(response, ((1, 1), (1, 1)), mode="edge")
+    pairs = [
+        (p[1:h+1, 0:w], p[1:h+1, 2:w+2]), # Left - Right
+        (p[0:h, 1:w+1], p[2:h+2, 1:w+1]), # Up - Down
+        (p[0:h, 0:w],   p[2:h+2, 2:w+2]), # Main Diagonal
+        (p[0:h, 2:w+2], p[2:h+2, 0:w]),   # Anti-Diagonal
+    ]
+    zc_strength = np.zeros((h, w), dtype=np.float64)
+    for a, b in pairs:
+        zc_strength = np.maximum(zc_strength, np.where((a * b) < 0, np.abs(a - b), 0.0))
+    return np.where(zc_strength >= slope_threshold, 255, 0).astype(np.uint8)</pre>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ======================================================================= -->
+  <!-- APPLICATION JAVASCRIPT                                                  -->
+  <!-- ======================================================================= -->
+  <script>
+    // -------------------------------------------------------------------------
+    // 1. APPLICATION STATE & PRESETS
+    // -------------------------------------------------------------------------
+    const PRESET_MATRICES = {
+      vertical_step: [
+        [20, 20, 100, 200, 200],
+        [20, 25, 110, 200, 200],
+        [20, 30, 120, 205, 210],
+        [25, 30, 115, 200, 210],
+        [25, 35, 120, 205, 210]
+      ],
+      diagonal_edge: [
+        [30,  30,  40, 180, 210],
+        [30,  40, 175, 210, 215],
+        [35, 170, 205, 215, 220],
+        [165, 200, 215, 220, 220],
+        [200, 210, 220, 220, 225]
+      ],
+      horizontal_step: [
+        [25,  25,  30,  25,  25],
+        [30,  35,  35,  35,  30],
+        [110, 115, 120, 115, 110],
+        [205, 210, 215, 210, 205],
+        [210, 215, 220, 215, 210]
+      ],
+      bright_spot: [
+        [30, 30,  35, 30, 30],
+        [30, 45,  80, 45, 30],
+        [35, 80, 240, 80, 35],
+        [30, 45,  80, 45, 30],
+        [30, 30,  35, 30, 30]
+      ],
+      roof_edge: [
+        [40, 180, 230, 180, 40],
+        [40, 185, 235, 185, 40],
+        [45, 190, 240, 190, 45],
+        [40, 185, 235, 185, 40],
+        [40, 180, 230, 180, 40]
+      ]
+    };
+
+    const SOBEL_GX = [[-1, 0, 1], [-2, 0, 2], [-1, 0, 1]];
+    const SOBEL_GY = [[-1, -2, -1], [0, 0, 0], [1, 2, 1]];
+    const PREWITT_GX = [[-1, 0, 1], [-1, 0, 1], [-1, 0, 1]];
+    const PREWITT_GY = [[-1, -1, -1], [0, 0, 0], [1, 1, 1]];
+
+    const KIRSCH_DIRS = [
+      { name: "k0: North (0°)",      mask: [[ 5,  5,  5], [-3, 0, -3], [-3, -3, -3]] },
+      { name: "k1: NorthWest (45°)", mask: [[ 5,  5, -3], [ 5, 0, -3], [-3, -3, -3]] },
+      { name: "k2: West (90°)",      mask: [[ 5, -3, -3], [ 5, 0, -3], [ 5, -3, -3]] },
+      { name: "k3: SouthWest (135°)",mask: [[-3, -3, -3], [ 5, 0, -3], [ 5,  5, -3]] },
+      { name: "k4: South (180°)",    mask: [[-3, -3, -3], [-3, 0, -3], [ 5,  5,  5]] },
+      { name: "k5: SouthEast (225°)",mask: [[-3, -3, -3], [-3, 0,  5], [-3,  5,  5]] },
+      { name: "k6: East (270°)",     mask: [[-3, -3,  5], [-3, 0,  5], [-3, -3,  5]] },
+      { name: "k7: NorthEast (315°)",mask: [[-3,  5,  5], [-3, 0,  5], [-3, -3, -3]] }
+    ];
+
+    const DISCRETE_MEXICAN_HAT_5X5 = [
+      [ 0,  0, -1,  0,  0],
+      [ 0, -1, -2, -1,  0],
+      [-1, -2, 16, -2, -1],
+      [ 0, -1, -2, -1,  0],
+      [ 0,  0, -1,  0,  0]
+    ];
+
+    const state = {
+      patch5x5: JSON.parse(JSON.stringify(PRESET_MATRICES.vertical_step)),
+      sigmaLog: 1.0,
+      logKernelMode: "analytical",
+      sigma1Dog: 1.0,
+      sigma2Dog: 1.6,
+      zcThreshold: 1.5,
+      gradThreshold: 80,
+      activeMathTab: "log",
+      imgWidth: 160,
+      imgHeight: 160,
+      probeX: 72,
+      probeY: 45,
+      baseGrayImage: null,
+      noisyGrayImage: null,
+      uploadedSourceImageElement: null,
+      uploadedFileName: null
+    };
+
+    let radialChartInstance = null;
+
+    // -------------------------------------------------------------------------
+    // 2. MATHEMATICAL KERNEL GENERATORS & CONVOLUTION FUNCTIONS
+    // -------------------------------------------------------------------------
+    function generateGaussianKernel2D(size, sigma) {
+      const half = Math.floor(size / 2);
+      const kernel = [];
+      let sum = 0;
+      const twoSigma2 = 2 * sigma * sigma;
+      const normFactor = 1 / (Math.PI * twoSigma2);
+      for (let r = -half; r <= half; r++) {
+        const row = [];
+        for (let c = -half; c <= half; c++) {
+          const r2 = r * r + c * c;
+          const val = normFactor * Math.exp(-r2 / twoSigma2);
+          row.push(val);
+          sum += val;
+        }
+        kernel.push(row);
+      }
+      for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+          kernel[r][c] /= sum;
+        }
+      }
+      return kernel;
+    }
+
+    function generateLoGKernel2D(size, sigma, zeroMean = true) {
+      const half = Math.floor(size / 2);
+      const kernel = [];
+      let sum = 0;
+      const sigma2 = sigma * sigma;
+      const sigma4 = sigma2 * sigma2;
+      for (let r = -half; r <= half; r++) {
+        const row = [];
+        for (let c = -half; c <= half; c++) {
+          const r2 = r * r + c * c;
+          const val = -(1.0 / (Math.PI * sigma4)) * (1.0 - r2 / (2.0 * sigma2)) * Math.exp(-r2 / (2.0 * sigma2));
+          row.push(val);
+          sum += val;
+        }
+        kernel.push(row);
+      }
+      if (zeroMean) {
+        const mean = sum / (size * size);
+        for (let r = 0; r < size; r++) {
+          for (let c = 0; c < size; c++) {
+            kernel[r][c] -= mean;
+          }
+        }
+      }
+      return kernel;
+    }
+
+    function generateDoGKernel2D(size, sigma1, sigma2) {
+      const g1 = generateGaussianKernel2D(size, sigma1);
+      const g2 = generateGaussianKernel2D(size, sigma2);
+      const dog = [];
+      for (let r = 0; r < size; r++) {
+        const row = [];
+        for (let c = 0; c < size; c++) {
+          row.push(g1[r][c] - g2[r][c]);
+        }
+        dog.push(row);
+      }
+      return { g1, g2, dog };
+    }
+
+    function convolve2DMatrix(mat, kernel) {
+      const h = mat.length;
+      const w = mat[0].length;
+      const kh = kernel.length;
+      const kw = kernel[0].length;
+      const halfH = Math.floor(kh / 2);
+      const halfW = Math.floor(kw / 2);
+      const out = [];
+      for (let r = 0; r < h; r++) {
+        const row = [];
+        for (let c = 0; c < w; c++) {
+          let acc = 0;
+          for (let kr = -halfH; kr <= halfH; kr++) {
+            for (let kc = -halfW; kc <= halfW; kc++) {
+              const rr = Math.min(h - 1, Math.max(0, r + kr));
+              const cc = Math.min(w - 1, Math.max(0, c + kc));
+              acc += mat[rr][cc] * kernel[kr + halfH][kc + halfW];
+            }
+          }
+          row.push(acc);
+        }
+        out.push(row);
+      }
+      return out;
+    }
+
+    function checkZeroCrossingAtCenter(resp5x5, r = 2, c = 2) {
+      const pairs = [
+        { label: "Horizontal (Left vs Right)", p: resp5x5[r][c - 1], q: resp5x5[r][c + 1] },
+        { label: "Vertical   (Up vs Down)",    p: resp5x5[r - 1][c], q: resp5x5[r + 1][c] },
+        { label: "Main Diag  (UL vs DR)",      p: resp5x5[r - 1][c - 1], q: resp5x5[r + 1][c + 1] },
+        { label: "Anti Diag  (UR vs DL)",      p: resp5x5[r - 1][c + 1], q: resp5x5[r + 1][c - 1] }
+      ];
+      let maxSlope = 0;
+      const details = pairs.map(item => {
+        const opposite = (item.p * item.q) < 0;
+        const slope = opposite ? Math.abs(item.p - item.q) : 0;
+        if (slope > maxSlope) maxSlope = slope;
+        return { ...item, opposite, slope };
+      });
+      return { maxSlope, details };
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. UI MATRIX INPUT RENDERING & HTML TABLE FORMATTERS
+    // -------------------------------------------------------------------------
+    function buildMatrixInputs() {
+      const container = document.getElementById("matrixGridContainer");
+      container.innerHTML = "";
+      for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 5; c++) {
+          const inp = document.createElement("input");
+          inp.type = "number";
+          inp.min = "0";
+          inp.max = "255";
+          inp.step = "1";
+          inp.value = state.patch5x5[r][c];
+          inp.className = "matrix-input";
+          if (r === 2 && c === 2) {
+            inp.classList.add("matrix-center");
+          } else if (r >= 1 && r <= 3 && c >= 1 && c <= 3) {
+            inp.classList.add("matrix-inner3x3");
+          }
+          inp.dataset.row = r;
+          inp.dataset.col = c;
+          inp.addEventListener("input", (e) => {
+            let v = parseFloat(e.target.value);
+            if (Number.isNaN(v)) v = 0;
+            v = Math.max(0, Math.min(255, v));
+            state.patch5x5[r][c] = v;
+            document.getElementById("patchOriginBadge").textContent = "Custom 5×5 Matrix";
+            updateMathCalculations();
+          });
+          container.appendChild(inp);
+        }
+      }
+      syncQuickInputBox();
+    }
+
+    function syncMatrixInputsFromState() {
+      const inputs = document.querySelectorAll("#matrixGridContainer input");
+      inputs.forEach(inp => {
+        const r = parseInt(inp.dataset.row, 10);
+        const c = parseInt(inp.dataset.col, 10);
+        inp.value = Math.round(state.patch5x5[r][c]);
+      });
+      syncQuickInputBox();
+    }
+
+    function syncQuickInputBox() {
+      const flat = [];
+      for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 5; c++) {
+          flat.push(Math.round(state.patch5x5[r][c]));
+        }
+      }
+      document.getElementById("quickMatrixInput").value = flat.join(", ");
+    }
+
+    function sample5x5FromImageAt(cx, cy) {
+      if (!state.noisyGrayImage) return;
+      const W = state.imgWidth;
+      const H = state.imgHeight;
+      const clampedX = Math.max(0, Math.min(W - 1, cx));
+      const clampedY = Math.max(0, Math.min(H - 1, cy));
+      state.probeX = clampedX;
+      state.probeY = clampedY;
+
+      document.getElementById("probeXInput").value = clampedX;
+      document.getElementById("probeYInput").value = clampedY;
+      document.getElementById("probeCoordBadge").textContent = `Probed (${clampedX}, ${clampedY})`;
+      document.getElementById("patchOriginBadge").textContent = `Image Pixel (${clampedX}, ${clampedY})`;
+
+      for (let r = -2; r <= 2; r++) {
+        for (let c = -2; c <= 2; c++) {
+          const yy = Math.min(H - 1, Math.max(0, clampedY + r));
+          const xx = Math.min(W - 1, Math.max(0, clampedX + c));
+          state.patch5x5[r + 2][c + 2] = Math.round(state.noisyGrayImage[yy * W + xx]);
+        }
+      }
+      syncMatrixInputsFromState();
+      updateMathCalculations();
+      renderGrayscaleCanvas("canvasInput", state.noisyGrayImage, W, H, { x: clampedX, y: clampedY });
+    }
+
+    function formatMatrixHTMLTable(mat, decimals = 3, highlightCenter = true) {
+      let html = '<table class="w-full text-right border-collapse">';
+      for (let r = 0; r < mat.length; r++) {
+        html += "<tr>";
+        for (let c = 0; c < mat[r].length; c++) {
+          const isCenter = highlightCenter && r === Math.floor(mat.length / 2) && c === Math.floor(mat[r].length / 2);
+          const val = mat[r][c];
+          const colorCls = isCenter
+            ? "bg-amber-500/20 text-amber-300 font-bold border border-amber-500/50"
+            : (val < 0 ? "text-rose-300 border border-slate-800/80" : "text-sky-200 border border-slate-800/80");
+          html += `<td class="p-1 ${colorCls}">${val.toFixed(decimals)}</td>`;
+        }
+        html += "</tr>";
+      }
+      html += "</table>";
+      return html;
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. UPDATE STEP-BY-STEP MATHEMATICAL CALCULATIONS
+    // -------------------------------------------------------------------------
+    function updateMathCalculations() {
+      const P = state.patch5x5;
+      const inner3x3 = [
+        [P[1][1], P[1][2], P[1][3]],
+        [P[2][1], P[2][2], P[2][3]],
+        [P[3][1], P[3][2], P[3][3]]
+      ];
+
+      // --- A. LoG Calculation ---
+      const logKernel = state.logKernelMode === "mexican_hat"
+        ? DISCRETE_MEXICAN_HAT_5X5
+        : generateLoGKernel2D(5, state.sigmaLog, true);
+      const logDec = state.logKernelMode === "mexican_hat" ? 1 : 4;
+
+      const logProduct = [];
+      let logCenterSum = 0;
+      let kernelSum = 0;
+      for (let r = 0; r < 5; r++) {
+        const pRow = [];
+        for (let c = 0; c < 5; c++) {
+          const prod = P[r][c] * logKernel[r][c];
+          pRow.push(prod);
+          logCenterSum += prod;
+          kernelSum += logKernel[r][c];
+        }
+        logProduct.push(pRow);
+      }
+
+      const logResp5x5 = convolve2DMatrix(P, logKernel);
+      const logZC = checkZeroCrossingAtCenter(logResp5x5, 2, 2);
+      const isLogEdge = logZC.maxSlope >= state.zcThreshold;
+
+      document.getElementById("logKernelMatrixView").innerHTML = formatMatrixHTMLTable(logKernel, logDec, true);
+      document.getElementById("logKernelSumNote").textContent =
+        `Sum of K_LoG weights = ${kernelSum.toExponential(2)} (Zero-Mean Verified)`;
+      document.getElementById("logProductMatrixView").innerHTML = formatMatrixHTMLTable(logProduct, 2, true);
+      document.getElementById("logCenterSumEquation").innerHTML =
+        `R<sub>LoG</sub>(2,2) = &sum; I(u,v)&middot;K<sub>LoG</sub>(u,v) = <strong>${logCenterSum.toFixed(4)}</strong>`;
+      document.getElementById("logResponseMatrixView").innerHTML = formatMatrixHTMLTable(logResp5x5, 2, true);
+
+      let zcHtml = "";
+      logZC.details.forEach(d => {
+        const badge = d.opposite
+          ? `<span class="text-emerald-400 font-semibold">SIGN CHANGE (|&Delta;|=${d.slope.toFixed(2)})</span>`
+          : `<span class="text-slate-500">Same Sign</span>`;
+        zcHtml += `<div>${d.label}: (${d.p.toFixed(2)}, ${d.q.toFixed(2)}) &rarr; ${badge}</div>`;
+      });
+      zcHtml += `<div class="pt-1 border-t border-slate-800 font-bold ${isLogEdge ? 'text-emerald-300' : 'text-amber-300'}">
+        Max ZC Slope = ${logZC.maxSlope.toFixed(3)} ${isLogEdge ? '&ge;' : '&lt;'} T_zc (${state.zcThreshold.toFixed(2)})
+        &rarr; ${isLogEdge ? 'ZERO-CROSSING EDGE DETECTED' : 'NO ZERO-CROSSING EDGE'}
+      </div>`;
+      document.getElementById("logZeroCrossingDetails").innerHTML = zcHtml;
+
+      // --- B. DoG Calculation ---
+      const { g1, g2, dog } = generateDoGKernel2D(5, state.sigma1Dog, state.sigma2Dog);
+      let s1Center = 0;
+      let s2Center = 0;
+      for (let r = 0; r < 5; r++) {
+        for (let c = 0; c < 5; c++) {
+          s1Center += P[r][c] * g1[r][c];
+          s2Center += P[r][c] * g2[r][c];
+        }
+      }
+      const dogCenter = s1Center - s2Center;
+      const dogResp5x5 = convolve2DMatrix(P, dog);
+      const dogZC = checkZeroCrossingAtCenter(dogResp5x5, 2, 2);
+      const isDogEdge = dogZC.maxSlope >= state.zcThreshold;
+
+      document.getElementById("dogGaussiansView").innerHTML =
+        `<div class="text-[11px] text-emerald-300 font-semibold mb-1">G<sub>&sigma;1=${state.sigma1Dog.toFixed(2)}</sub> (5&times;5):</div>` +
+        formatMatrixHTMLTable(g1, 3, false) +
+        `<div class="text-[11px] text-amber-300 font-semibold mt-2 mb-1">G<sub>&sigma;2=${state.sigma2Dog.toFixed(2)}</sub> (5&times;5):</div>` +
+        formatMatrixHTMLTable(g2, 3, false);
+
+      document.getElementById("dogKernelMatrixView").innerHTML = formatMatrixHTMLTable(dog, 4, true);
+      document.getElementById("dogSubtractionMath").innerHTML =
+        `<div>I<sub>&sigma;1</sub>(2,2) = &sum; I &middot; G<sub>&sigma;1</sub> = ${s1Center.toFixed(4)}</div>` +
+        `<div>I<sub>&sigma;2</sub>(2,2) = &sum; I &middot; G<sub>&sigma;2</sub> = ${s2Center.toFixed(4)}</div>` +
+        `<div class="text-emerald-300 font-bold">DoG(2,2) = I<sub>&sigma;1</sub> &minus; I<sub>&sigma;2</sub> = ${dogCenter.toFixed(4)}</div>`;
+
+      document.getElementById("dogResponseMatrixView").innerHTML = formatMatrixHTMLTable(dogResp5x5, 2, true);
+
+      let dogZcHtml = "";
+      dogZC.details.forEach(d => {
+        const badge = d.opposite
+          ? `<span class="text-emerald-400 font-semibold">SIGN CHANGE (|&Delta;|=${d.slope.toFixed(2)})</span>`
+          : `<span class="text-slate-500">Same Sign</span>`;
+        dogZcHtml += `<div>${d.label}: (${d.p.toFixed(2)}, ${d.q.toFixed(2)}) &rarr; ${badge}</div>`;
+      });
+      dogZcHtml += `<div class="pt-1 border-t border-slate-800 font-bold ${isDogEdge ? 'text-emerald-300' : 'text-amber-300'}">
+        Max ZC Slope = ${dogZC.maxSlope.toFixed(3)} ${isDogEdge ? '&ge;' : '&lt;'} T_zc (${state.zcThreshold.toFixed(2)})
+        &rarr; ${isDogEdge ? 'ZERO-CROSSING EDGE DETECTED' : 'NO ZERO-CROSSING EDGE'}
+      </div>`;
+      document.getElementById("dogZeroCrossingDetails").innerHTML = dogZcHtml;
+
+      // --- C. Sobel & Prewitt Calculation on Inner 3x3 ---
+      let sGx = 0, sGy = 0, pGx = 0, pGy = 0;
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) {
+          sGx += inner3x3[r][c] * SOBEL_GX[r][c];
+          sGy += inner3x3[r][c] * SOBEL_GY[r][c];
+          pGx += inner3x3[r][c] * PREWITT_GX[r][c];
+          pGy += inner3x3[r][c] * PREWITT_GY[r][c];
+        }
+      }
+      const sMag = Math.hypot(sGx, sGy);
+      const sDeg = (Math.atan2(sGy, sGx) * 180) / Math.PI;
+      const pMag = Math.hypot(pGx, pGy);
+      const pDeg = (Math.atan2(pGy, pGx) * 180) / Math.PI;
+
+      document.getElementById("sobelMathBox").innerHTML = `
+        <h3 class="text-xs font-bold text-amber-300">Sobel Operator (3&times;3 Weighted Gradient)</h3>
+        <div class="mono text-xs space-y-1 text-slate-300">
+          <div>G<sub>x</sub> = (${inner3x3[0][2]} + 2&middot;${inner3x3[1][2]} + ${inner3x3[2][2]}) &minus; (${inner3x3[0][0]} + 2&middot;${inner3x3[1][0]} + ${inner3x3[2][0]}) = <strong class="text-white">${sGx.toFixed(2)}</strong></div>
+          <div>G<sub>y</sub> = (${inner3x3[2][0]} + 2&middot;${inner3x3[2][1]} + ${inner3x3[2][2]}) &minus; (${inner3x3[0][0]} + 2&middot;${inner3x3[0][1]} + ${inner3x3[0][2]}) = <strong class="text-white">${sGy.toFixed(2)}</strong></div>
+          <div class="text-amber-300 font-bold">|G| = &radic;(${sGx.toFixed(1)}&sup2; + ${sGy.toFixed(1)}&sup2;) = ${sMag.toFixed(4)}</div>
+          <div>|G|<sub>1</sub> = |G<sub>x</sub>| + |G<sub>y</sub>| = ${(Math.abs(sGx) + Math.abs(sGy)).toFixed(2)}</div>
+          <div>Angle &theta; = atan2(${sGy.toFixed(1)}, ${sGx.toFixed(1)}) = ${sDeg.toFixed(2)}&deg;</div>
+        </div>
+      `;
+
+      document.getElementById("prewittMathBox").innerHTML = `
+        <h3 class="text-xs font-bold text-purple-300">Prewitt Operator (3&times;3 Uniform Gradient)</h3>
+        <div class="mono text-xs space-y-1 text-slate-300">
+          <div>G<sub>x</sub> = (${inner3x3[0][2]} + ${inner3x3[1][2]} + ${inner3x3[2][2]}) &minus; (${inner3x3[0][0]} + ${inner3x3[1][0]} + ${inner3x3[2][0]}) = <strong class="text-white">${pGx.toFixed(2)}</strong></div>
+          <div>G<sub>y</sub> = (${inner3x3[2][0]} + ${inner3x3[2][1]} + ${inner3x3[2][2]}) &minus; (${inner3x3[0][0]} + ${inner3x3[0][1]} + ${inner3x3[0][2]}) = <strong class="text-white">${pGy.toFixed(2)}</strong></div>
+          <div class="text-purple-300 font-bold">|G| = &radic;(${pGx.toFixed(1)}&sup2; + ${pGy.toFixed(1)}&sup2;) = ${pMag.toFixed(4)}</div>
+          <div>|G|<sub>1</sub> = |G<sub>x</sub>| + |G<sub>y</sub>| = ${(Math.abs(pGx) + Math.abs(pGy)).toFixed(2)}</div>
+          <div>Angle &theta; = atan2(${pGy.toFixed(1)}, ${pGx.toFixed(1)}) = ${pDeg.toFixed(2)}&deg;</div>
+        </div>
+      `;
+
+      // --- D. Kirsch 8 Compass Masks Calculation ---
+      let maxKirschAbs = -1;
+      let bestKirschName = "";
+      const kirschResults = KIRSCH_DIRS.map(dir => {
+        let resp = 0;
+        for (let r = 0; r < 3; r++) {
+          for (let c = 0; c < 3; c++) {
+            resp += inner3x3[r][c] * dir.mask[r][c];
+          }
+        }
+        if (Math.abs(resp) > maxKirschAbs) {
+          maxKirschAbs = Math.abs(resp);
+          bestKirschName = dir.name;
+        }
+        return { ...dir, resp };
+      });
+
+      const kirschGrid = document.getElementById("kirschMasksGrid");
+      kirschGrid.innerHTML = kirschResults.map(kr => {
+        const isMax = kr.name === bestKirschName;
+        return `
+          <div class="bg-slate-950 p-2.5 rounded-lg border ${isMax ? 'border-rose-500 bg-rose-950/20' : 'border-slate-800'} space-y-1.5">
+            <div class="flex justify-between items-center text-[11px]">
+              <span class="font-bold ${isMax ? 'text-rose-300' : 'text-slate-300'}">${kr.name}</span>
+              ${isMax ? '<span class="px-1.5 py-0.5 rounded bg-rose-500/30 text-rose-200 text-[10px]">MAX</span>' : ''}
+            </div>
+            <div class="mono text-[11px] text-slate-400">
+              Response R = <strong class="text-white">${kr.resp.toFixed(1)}</strong> (|R| = ${Math.abs(kr.resp).toFixed(1)})
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      // Update Top KPI Strip
+      document.getElementById("kpiLogResp").textContent = logCenterSum.toFixed(3);
+      document.getElementById("kpiLogZc").textContent = `ZC Slope: ${logZC.maxSlope.toFixed(2)} ${isLogEdge ? '(EDGE)' : ''}`;
+      document.getElementById("kpiDogResp").textContent = dogCenter.toFixed(3);
+      document.getElementById("kpiDogZc").textContent = `ZC Slope: ${dogZC.maxSlope.toFixed(2)} ${isDogEdge ? '(EDGE)' : ''}`;
+      document.getElementById("kpiSobelMag").textContent = sMag.toFixed(2);
+      document.getElementById("kpiSobelDir").textContent = `Gx=${sGx.toFixed(0)}, Gy=${sGy.toFixed(0)} (${sDeg.toFixed(1)}°)`;
+      document.getElementById("kpiPrewittMag").textContent = pMag.toFixed(2);
+      document.getElementById("kpiPrewittDir").textContent = `Gx=${pGx.toFixed(0)}, Gy=${pGy.toFixed(0)} (${pDeg.toFixed(1)}°)`;
+      document.getElementById("kpiKirschMag").textContent = maxKirschAbs.toFixed(1);
+      document.getElementById("kpiKirschDir").textContent = bestKirschName;
+
+      // Update DoG Ratio Badge
+      const ratio = state.sigma2Dog / state.sigma1Dog;
+      const ratioBadge = document.getElementById("dogRatioBadge");
+      const isOptimal = Math.abs(ratio - 1.6) <= 0.15;
+      ratioBadge.textContent = `DoG Ratio k = σ2/σ1 = ${ratio.toFixed(2)} ${isOptimal ? '(Optimal ~1.6 LoG Match)' : ''}`;
+
+      updateRadialChart();
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. 1D RADIAL CROSS-SECTION CHART (LoG vs DoG)
+    // -------------------------------------------------------------------------
+    function updateRadialChart() {
+      const rValues = [];
+      const logProfile = [];
+      const dogProfile = [];
+      const g1Profile = [];
+      const g2Profile = [];
+
+      const sLog = state.sigmaLog;
+      const s1 = state.sigma1Dog;
+      const s2 = state.sigma2Dog;
+
+      for (let i = -40; i <= 40; i++) {
+        const r = i * 0.12;
+        rValues.push(r.toFixed(2));
+        const r2 = r * r;
+
+        const negLogVal = (1.0 / (Math.PI * Math.pow(sLog, 4))) * (1.0 - r2 / (2.0 * sLog * sLog)) * Math.exp(-r2 / (2.0 * sLog * sLog));
+        const g1Val = (1.0 / (2.0 * Math.PI * s1 * s1)) * Math.exp(-r2 / (2.0 * s1 * s1));
+        const g2Val = (1.0 / (2.0 * Math.PI * s2 * s2)) * Math.exp(-r2 / (2.0 * s2 * s2));
+        const dogVal = g1Val - g2Val;
+
+        logProfile.push(negLogVal);
+        dogProfile.push(dogVal);
+        g1Profile.push(g1Val);
+        g2Profile.push(g2Val);
+      }
+
+      const ctx = document.getElementById("radialProfileChart").getContext("2d");
+      if (!radialChartInstance) {
+        radialChartInstance = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: rValues,
+            datasets: [
+              {
+                label: "-LoG(r) Mexican Hat",
+                data: logProfile,
+                borderColor: "#38bdf8",
+                backgroundColor: "rgba(56, 189, 248, 0.12)",
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: true,
+                tension: 0.3
+              },
+              {
+                label: "DoG(r) = G_σ1 - G_σ2",
+                data: dogProfile,
+                borderColor: "#10b981",
+                borderWidth: 2,
+                borderDash: [4, 3],
+                pointRadius: 0,
+                fill: false,
+                tension: 0.3
+              },
+              {
+                label: "G_σ1(r)",
+                data: g1Profile,
+                borderColor: "rgba(251, 191, 36, 0.55)",
+                borderWidth: 1,
+                pointRadius: 0,
+                fill: false,
+                tension: 0.3
+              },
+              {
+                label: "G_σ2(r)",
+                data: g2Profile,
+                borderColor: "rgba(244, 63, 94, 0.55)",
+                borderWidth: 1,
+                pointRadius: 0,
+                fill: false,
+                tension: 0.3
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 150 },
+            plugins: {
+              legend: {
+                labels: { color: "#cbd5e1", font: { size: 10 }, boxWidth: 12 }
+              }
+            },
+            scales: {
+              x: {
+                ticks: { color: "#94a3b8", maxTicksLimit: 9, font: { size: 10 } },
+                grid: { color: "rgba(51, 65, 85, 0.3)" }
+              },
+              y: {
+                ticks: { color: "#94a3b8", font: { size: 10 } },
+                grid: { color: "rgba(51, 65, 85, 0.3)" }
+              }
+            }
+          }
+        });
+      } else {
+        radialChartInstance.data.labels = rValues;
+        radialChartInstance.data.datasets[0].data = logProfile;
+        radialChartInstance.data.datasets[1].data = dogProfile;
+        radialChartInstance.data.datasets[2].data = g1Profile;
+        radialChartInstance.data.datasets[3].data = g2Profile;
+        radialChartInstance.update();
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. FULL 2D DIGITAL IMAGE PROCESSING ENGINE
+    // -------------------------------------------------------------------------
+    function buildSyntheticScene(sceneType, width, height) {
+      const img = new Float64Array(width * height);
+      img.fill(28);
+      const scale = width / 160;
+
+      if (sceneType === "geometric") {
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const sx = x / scale;
+            const sy = y / scale;
+            const idx = y * width + x;
+            if (sx >= 18 && sx <= 72 && sy >= 20 && sy <= 72) {
+              img[idx] = 215;
+              if (sx >= 34 && sx <= 56 && sy >= 36 && sy <= 56) img[idx] = 55;
+            }
+            const dx = sx - 118;
+            const dy = sy - 48;
+            const r = Math.hypot(dx, dy);
+            if (r <= 30) img[idx] = 230;
+            if (r <= 14) img[idx] = 80;
+            if (sy >= 90 && sy <= 145 && sx >= 20 && sx <= 20 + (sy - 90)) {
+              img[idx] = 195;
+            }
+            if (sy >= 92 && sy <= 145 && sx >= 90 && sx <= 146) {
+              const barIdx = Math.floor((sx - 90) / 11);
+              img[idx] = (barIdx % 2 === 0) ? 225 : 45;
+            }
+          }
+        }
+      } else if (sceneType === "concentric") {
+        const cx = width / 2;
+        const cy = height / 2;
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const r = Math.hypot(x - cx, y - cy) / scale;
+            if (r < 16) img[y * width + x] = 235;
+            else if (r < 32) img[y * width + x] = 50;
+            else if (r < 48) img[y * width + x] = 210;
+            else if (r < 64) img[y * width + x] = 60;
+          }
+        }
+      } else if (sceneType === "checker_bars") {
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const bx = Math.floor((x / scale) / 32);
+            const by = Math.floor((y / scale) / 32);
+            img[y * width + x] = ((bx + by) % 2 === 0) ? 215 : 40;
+          }
+        }
+      } else if (sceneType === "micro_cells") {
+        const centers = [
+          [40, 42, 18], [105, 38, 22], [130, 95, 16],
+          [50, 110, 24], [90, 125, 15], [78, 76, 14]
+        ];
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const sx = x / scale;
+            const sy = y / scale;
+            let val = 30;
+            for (const [cx, cy, rad] of centers) {
+              const d = Math.hypot(sx - cx, sy - cy);
+              if (d <= rad) {
+                val = 210 - (d / rad) * 45;
+              }
+            }
+            img[y * width + x] = val;
+          }
+        }
+      }
+      return img;
+    }
+
+    function rasterizeUploadedImageToGray(imgElement, width, height) {
+      const off = document.createElement("canvas");
+      off.width = width;
+      off.height = height;
+      const octx = off.getContext("2d");
+      octx.drawImage(imgElement, 0, 0, width, height);
+      const raw = octx.getImageData(0, 0, width, height).data;
+      const gray = new Float64Array(width * height);
+      for (let i = 0; i < gray.length; i++) {
+        gray[i] = 0.299 * raw[i * 4] + 0.587 * raw[i * 4 + 1] + 0.114 * raw[i * 4 + 2];
+      }
+      return gray;
+    }
+
+    function applyGaussianNoise(baseImg, sigmaNoise) {
+      const out = new Float64Array(baseImg.length);
+      if (sigmaNoise <= 0) {
+        out.set(baseImg);
+        return out;
+      }
+      let seed = 1337;
+      function randU() {
+        seed = (seed * 1664525 + 1013904223) % 4294967296;
+        return (seed + 1) / 4294967297;
+      }
+      for (let i = 0; i < baseImg.length; i++) {
+        const u1 = randU();
+        const u2 = randU();
+        const z = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+        out[i] = Math.max(0, Math.min(255, baseImg[i] + z * sigmaNoise));
+      }
+      return out;
+    }
+
+    function convolveFlatImage(img, width, height, kernel2D) {
+      const kh = kernel2D.length;
+      const kw = kernel2D[0].length;
+      const halfH = Math.floor(kh / 2);
+      const halfW = Math.floor(kw / 2);
+      const out = new Float64Array(width * height);
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          let sum = 0;
+          for (let kr = -halfH; kr <= halfH; kr++) {
+            const yy = Math.min(height - 1, Math.max(0, y + kr));
+            const rowOffset = yy * width;
+            const kRow = kernel2D[kr + halfH];
+            for (let kc = -halfW; kc <= halfW; kc++) {
+              const xx = Math.min(width - 1, Math.max(0, x + kc));
+              sum += img[rowOffset + xx] * kRow[kc + halfW];
+            }
+          }
+          out[y * width + x] = sum;
+        }
+      }
+      return out;
+    }
+
+    function computeZeroCrossingsFlat(resp, width, height, threshold) {
+      const edges = new Uint8ClampedArray(width * height);
+      let count = 0;
+      for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+          const idx = y * width + x;
+          const pL = resp[idx - 1], pR = resp[idx + 1];
+          const pU = resp[idx - width], pD = resp[idx + width];
+          const pUL = resp[idx - width - 1], pDR = resp[idx + width + 1];
+          const pUR = resp[idx - width + 1], pDL = resp[idx + width - 1];
+
+          let maxSlope = 0;
+          if (pL * pR < 0) maxSlope = Math.max(maxSlope, Math.abs(pL - pR));
+          if (pU * pD < 0) maxSlope = Math.max(maxSlope, Math.abs(pU - pD));
+          if (pUL * pDR < 0) maxSlope = Math.max(maxSlope, Math.abs(pUL - pDR));
+          if (pUR * pDL < 0) maxSlope = Math.max(maxSlope, Math.abs(pUR - pDL));
+
+          if (maxSlope >= threshold) {
+            edges[idx] = 255;
+            count++;
+          }
+        }
+      }
+      return { edges, count };
+    }
+
+    function renderGrayscaleCanvas(canvasId, dataFlat, width, height, highlightCoord = null) {
+      const canvas = document.getElementById(canvasId);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      const ctx = canvas.getContext("2d");
+      const imgData = ctx.createImageData(width, height);
+      for (let i = 0; i < width * height; i++) {
+        const v = Math.max(0, Math.min(255, Math.round(dataFlat[i])));
+        imgData.data[i * 4] = v;
+        imgData.data[i * 4 + 1] = v;
+        imgData.data[i * 4 + 2] = v;
+        imgData.data[i * 4 + 3] = 255;
+      }
+      ctx.putImageData(imgData, 0, 0);
+
+      if (highlightCoord) {
+        ctx.strokeStyle = "#f59e0b";
+        ctx.lineWidth = 1.5;
+        ctx.strokeRect(highlightCoord.x - 2.5, highlightCoord.y - 2.5, 6, 6);
+      }
+    }
+
+    function renderSignedHeatmapCanvas(canvasId, respFlat, width, height) {
+      const canvas = document.getElementById(canvasId);
+      if (canvas.width !== width || canvas.height !== height) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+      const ctx = canvas.getContext("2d");
+      const imgData = ctx.createImageData(width, height);
+      let maxAbs = 1e-6;
+      for (let i = 0; i < respFlat.length; i++) {
+        if (Math.abs(respFlat[i]) > maxAbs) maxAbs = Math.abs(respFlat[i]);
+      }
+      for (let i = 0; i < width * height; i++) {
+        const norm = respFlat[i] / maxAbs;
+        if (norm >= 0) {
+          imgData.data[i * 4] = Math.round(20 + 235 * norm);
+          imgData.data[i * 4 + 1] = Math.round(30 + 160 * norm);
+          imgData.data[i * 4 + 2] = Math.round(45);
+        } else {
+          const m = -norm;
+          imgData.data[i * 4] = Math.round(20);
+          imgData.data[i * 4 + 1] = Math.round(40 + 150 * m);
+          imgData.data[i * 4 + 2] = Math.round(60 + 195 * m);
+        }
+        imgData.data[i * 4 + 3] = 255;
+      }
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    function runFullImagePipeline(probeCoord = null) {
+      const W = state.imgWidth;
+      const H = state.imgHeight;
+      const sigmaNoise = parseFloat(document.getElementById("noiseSigmaSelect").value) || 0;
+
+      if (state.uploadedSourceImageElement) {
+        state.baseGrayImage = rasterizeUploadedImageToGray(state.uploadedSourceImageElement, W, H);
+      } else {
+        const scene = document.getElementById("testSceneSelect").value;
+        state.baseGrayImage = buildSyntheticScene(scene, W, H);
+      }
+      state.noisyGrayImage = applyGaussianNoise(state.baseGrayImage, sigmaNoise);
+      const img = state.noisyGrayImage;
+
+      // Compute image global stats
+      let minVal = 255, maxVal = 0, sumVal = 0;
+      for (let i = 0; i < img.length; i++) {
+        const v = img[i];
+        if (v < minVal) minVal = v;
+        if (v > maxVal) maxVal = v;
+        sumVal += v;
+      }
+      const meanVal = sumVal / img.length;
+      let varSum = 0;
+      for (let i = 0; i < img.length; i++) {
+        const d = img[i] - meanVal;
+        varSum += d * d;
+      }
+      const stdVal = Math.sqrt(varSum / img.length);
+
+      document.getElementById("inputResLabel").textContent = `Resolution: ${W}×${H} px`;
+      document.getElementById("inputStatsText").textContent = `Min: ${Math.round(minVal)} | Max: ${Math.round(maxVal)}`;
+      document.getElementById("imageGlobalStatsBar").innerHTML = `
+        <span>Mean Intensity &mu;: <strong>${meanVal.toFixed(1)}</strong></span>
+        <span>Std Contrast &sigma;<sub>I</sub>: <strong>${stdVal.toFixed(1)}</strong></span>
+        <span class="text-amber-300">Click any pixel on Input Image to inspect its 5&times;5 math!</span>
+      `;
+
+      const activeCoord = probeCoord || { x: state.probeX, y: state.probeY };
+      renderGrayscaleCanvas("canvasInput", img, W, H, activeCoord);
+
+      // 1. LoG Full Image
+      const logK = state.logKernelMode === "mexican_hat"
+        ? DISCRETE_MEXICAN_HAT_5X5
+        : generateLoGKernel2D(5, state.sigmaLog, true);
+      const logResp = convolveFlatImage(img, W, H, logK);
+      const logZC = computeZeroCrossingsFlat(logResp, W, H, state.zcThreshold);
+      if (document.getElementById("logDisplayMode").value === "signed_heatmap") {
+        renderSignedHeatmapCanvas("canvasLog", logResp, W, H);
+      } else {
+        renderGrayscaleCanvas("canvasLog", logZC.edges, W, H);
+      }
+      document.getElementById("logEdgeCountText").textContent = `Edges: ${logZC.count} px`;
+
+      // 2. DoG Full Image
+      const { dog } = generateDoGKernel2D(5, state.sigma1Dog, state.sigma2Dog);
+      const dogResp = convolveFlatImage(img, W, H, dog);
+      const dogZC = computeZeroCrossingsFlat(dogResp, W, H, state.zcThreshold);
+      if (document.getElementById("dogDisplayMode").value === "signed_heatmap") {
+        renderSignedHeatmapCanvas("canvasDog", dogResp, W, H);
+      } else {
+        renderGrayscaleCanvas("canvasDog", dogZC.edges, W, H);
+      }
+      document.getElementById("dogEdgeCountText").textContent = `Edges: ${dogZC.count} px`;
+
+      // 3. Sobel Full Image
+      const sGx = convolveFlatImage(img, W, H, SOBEL_GX);
+      const sGy = convolveFlatImage(img, W, H, SOBEL_GY);
+      const sobelEdges = new Uint8ClampedArray(W * H);
+      let sobelCount = 0;
+      for (let i = 0; i < W * H; i++) {
+        const mag = Math.hypot(sGx[i], sGy[i]);
+        if (mag >= state.gradThreshold) {
+          sobelEdges[i] = 255;
+          sobelCount++;
+        }
+      }
+      renderGrayscaleCanvas("canvasSobel", sobelEdges, W, H);
+      document.getElementById("sobelEdgeCountText").textContent = `Edges: ${sobelCount} px`;
+
+      // 4. Prewitt Full Image
+      const pGx = convolveFlatImage(img, W, H, PREWITT_GX);
+      const pGy = convolveFlatImage(img, W, H, PREWITT_GY);
+      const prewittEdges = new Uint8ClampedArray(W * H);
+      let prewittCount = 0;
+      for (let i = 0; i < W * H; i++) {
+        const mag = Math.hypot(pGx[i], pGy[i]);
+        if (mag >= state.gradThreshold * 0.75) {
+          prewittEdges[i] = 255;
+          prewittCount++;
+        }
+      }
+      renderGrayscaleCanvas("canvasPrewitt", prewittEdges, W, H);
+      document.getElementById("prewittEdgeCountText").textContent = `Edges: ${prewittCount} px`;
+
+      // 5. Kirsch Full Image
+      const kirschResponses = KIRSCH_DIRS.map(d => convolveFlatImage(img, W, H, d.mask));
+      const kirschEdges = new Uint8ClampedArray(W * H);
+      let kirschCount = 0;
+      const kirschThresh = state.gradThreshold * 2.2;
+      for (let i = 0; i < W * H; i++) {
+        let maxK = 0;
+        for (let k = 0; k < 8; k++) {
+          const val = Math.abs(kirschResponses[k][i]);
+          if (val > maxK) maxK = val;
+        }
+        if (maxK >= kirschThresh) {
+          kirschEdges[i] = 255;
+          kirschCount++;
+        }
+      }
+      renderGrayscaleCanvas("canvasKirsch", kirschEdges, W, H);
+      document.getElementById("kirschEdgeCountText").textContent = `Edges: ${kirschCount} px`;
+    }
+
+    function handleImageFileUpload(file) {
+      if (!file || !file.type.startsWith("image/")) {
+        showToast("Please select a valid image file (PNG, JPG, WEBP, BMP, GIF).");
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const imgObj = new Image();
+        imgObj.onload = () => {
+          state.uploadedSourceImageElement = imgObj;
+          state.uploadedFileName = file.name || "pasted_image.png";
+          document.getElementById("uploadedImageStatus").textContent =
+            `Uploaded: ${state.uploadedFileName} (${imgObj.naturalWidth}×${imgObj.naturalHeight} → ${state.imgWidth}×${state.imgHeight})`;
+          runFullImagePipeline();
+          autoLocateStrongestEdgePixel();
+          showToast(`Processed input image: ${state.uploadedFileName}`);
+        };
+        imgObj.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function autoLocateStrongestEdgePixel() {
+      if (!state.noisyGrayImage) return;
+      const W = state.imgWidth;
+      const H = state.imgHeight;
+      const sGx = convolveFlatImage(state.noisyGrayImage, W, H, SOBEL_GX);
+      const sGy = convolveFlatImage(state.noisyGrayImage, W, H, SOBEL_GY);
+      let bestMag = -1;
+      let bestX = Math.floor(W / 2);
+      let bestY = Math.floor(H / 2);
+      for (let y = 3; y < H - 3; y++) {
+        for (let x = 3; x < W - 3; x++) {
+          const idx = y * W + x;
+          const m = Math.hypot(sGx[idx], sGy[idx]);
+          if (m > bestMag) {
+            bestMag = m;
+            bestX = x;
+            bestY = y;
+          }
+        }
+      }
+      sample5x5FromImageAt(bestX, bestY);
+      showToast(`Located strongest edge pixel at (${bestX}, ${bestY}) with Sobel |G|=${bestMag.toFixed(1)}`);
+    }
+
+    // -------------------------------------------------------------------------
+    // 7. EVENT LISTENERS & INITIALIZATION
+    // -------------------------------------------------------------------------
+    function showToast(msg) {
+      const t = document.getElementById("statusToast");
+      t.textContent = msg;
+      t.classList.remove("hidden");
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => t.classList.add("hidden"), 2400);
+    }
+
+    function switchMainTab(tabName) {
+      const views = {
+        workbench: document.getElementById("viewWorkbench"),
+        theory: document.getElementById("viewTheory"),
+        python: document.getElementById("viewPython")
+      };
+      const btns = {
+        workbench: document.getElementById("tabBtnWorkbench"),
+        theory: document.getElementById("tabBtnTheory"),
+        python: document.getElementById("tabBtnPython")
+      };
+      Object.keys(views).forEach(k => {
+        if (k === tabName) {
+          views[k].classList.remove("hidden");
+          btns[k].className = "px-3 py-1.5 rounded-md text-xs font-semibold bg-sky-600 text-white transition";
+        } else {
+          views[k].classList.add("hidden");
+          btns[k].className = "px-3 py-1.5 rounded-md text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition";
+        }
+      });
+    }
+
+    function switchMathSubTab(subTab) {
+      state.activeMathTab = subTab;
+      const panels = {
+        log: document.getElementById("mathPanelLog"),
+        dog: document.getElementById("mathPanelDog"),
+        sobel_prewitt: document.getElementById("mathPanelSobelPrewitt"),
+        kirsch: document.getElementById("mathPanelKirsch")
+      };
+      Object.keys(panels).forEach(k => {
+        panels[k].classList.toggle("hidden", k !== subTab);
+      });
+      document.querySelectorAll(".math-tab-btn").forEach(btn => {
+        const active = btn.dataset.mathtab === subTab;
+        btn.className = active
+          ? "math-tab-btn px-3 py-1.5 rounded-md text-xs font-semibold bg-sky-600 text-white transition"
+          : "math-tab-btn px-3 py-1.5 rounded-md text-xs font-semibold bg-slate-800 text-slate-300 hover:text-white transition";
+      });
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      buildMatrixInputs();
+      runFullImagePipeline();
+      updateMathCalculations();
+
+      // Main Navigation Tabs
+      document.getElementById("tabBtnWorkbench").addEventListener("click", () => switchMainTab("workbench"));
+      document.getElementById("tabBtnTheory").addEventListener("click", () => switchMainTab("theory"));
+      document.getElementById("tabBtnPython").addEventListener("click", () => switchMainTab("python"));
+
+      // Math Sub-Tabs
+      document.querySelectorAll(".math-tab-btn").forEach(btn => {
+        btn.addEventListener("click", () => switchMathSubTab(btn.dataset.mathtab));
+      });
+
+      // Preset 5x5 Matrix Buttons
+      document.querySelectorAll(".preset-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const pKey = btn.dataset.preset;
+          if (PRESET_MATRICES[pKey]) {
+            state.patch5x5 = JSON.parse(JSON.stringify(PRESET_MATRICES[pKey]));
+            document.getElementById("patchOriginBadge").textContent = `Preset: ${btn.textContent.trim()}`;
+            syncMatrixInputsFromState();
+            updateMathCalculations();
+            showToast(`Loaded 5×5 preset: ${btn.textContent.trim()}`);
+          }
+        });
+      });
+
+      // Quick CSV/Space 25-value Matrix Input
+      document.getElementById("applyQuickMatrixBtn").addEventListener("click", () => {
+        const raw = document.getElementById("quickMatrixInput").value;
+        const nums = raw.split(/[\s,]+/).map(v => parseFloat(v)).filter(v => !Number.isNaN(v));
+        if (nums.length >= 25) {
+          for (let r = 0; r < 5; r++) {
+            for (let c = 0; c < 5; c++) {
+              state.patch5x5[r][c] = Math.max(0, Math.min(255, nums[r * 5 + c]));
+            }
+          }
+          document.getElementById("patchOriginBadge").textContent = "Custom 25-Value Input";
+          syncMatrixInputsFromState();
+          updateMathCalculations();
+          showToast("Applied custom 25-pixel matrix input!");
+        } else {
+          showToast(`Please enter 25 numbers (found ${nums.length}).`);
+        }
+      });
+
+      // Parameter Sliders
+      document.getElementById("sigmaLogInput").addEventListener("input", (e) => {
+        state.sigmaLog = parseFloat(e.target.value);
+        document.getElementById("sigmaLogVal").textContent = state.sigmaLog.toFixed(2);
+        updateMathCalculations();
+        runFullImagePipeline();
+      });
+
+      document.getElementById("logKernelModeSelect").addEventListener("change", (e) => {
+        state.logKernelMode = e.target.value;
+        updateMathCalculations();
+        runFullImagePipeline();
+      });
+
+      document.getElementById("sigma1DogInput").addEventListener("input", (e) => {
+        state.sigma1Dog = parseFloat(e.target.value);
+        if (state.sigma2Dog <= state.sigma1Dog + 0.05) {
+          state.sigma2Dog = Math.min(3.2, state.sigma1Dog + 0.2);
+          document.getElementById("sigma2DogInput").value = state.sigma2Dog;
+          document.getElementById("sigma2DogVal").textContent = state.sigma2Dog.toFixed(2);
+        }
+        document.getElementById("sigma1DogVal").textContent = state.sigma1Dog.toFixed(2);
+        updateMathCalculations();
+        runFullImagePipeline();
+      });
+
+      document.getElementById("sigma2DogInput").addEventListener("input", (e) => {
+        state.sigma2Dog = Math.max(state.sigma1Dog + 0.05, parseFloat(e.target.value));
+        document.getElementById("sigma2DogVal").textContent = state.sigma2Dog.toFixed(2);
+        updateMathCalculations();
+        runFullImagePipeline();
+      });
+
+      document.getElementById("lockMarrRatioBtn").addEventListener("click", () => {
+        state.sigma2Dog = Math.min(3.2, parseFloat((state.sigma1Dog * 1.6).toFixed(2)));
+        document.getElementById("sigma2DogInput").value = state.sigma2Dog;
+        document.getElementById("sigma2DogVal").textContent = state.sigma2Dog.toFixed(2);
+        updateMathCalculations();
+        runFullImagePipeline();
+        showToast(`Set σ2 = 1.6 × σ1 = ${state.sigma2Dog.toFixed(2)} (Marr-Hildreth ratio)`);
+      });
+
+      document.getElementById("zcThresholdInput").addEventListener("input", (e) => {
+        state.zcThreshold = parseFloat(e.target.value);
+        document.getElementById("zcThresholdVal").textContent = state.zcThreshold.toFixed(2);
+        updateMathCalculations();
+        runFullImagePipeline();
+      });
+
+      document.getElementById("gradThresholdInput").addEventListener("input", (e) => {
+        state.gradThreshold = parseFloat(e.target.value);
+        document.getElementById("gradThresholdVal").textContent = state.gradThreshold.toFixed(0);
+        runFullImagePipeline();
+      });
+
+      // Image Scene, Resolution & Display Selectors
+      document.getElementById("testSceneSelect").addEventListener("change", (e) => {
+        state.uploadedSourceImageElement = null;
+        state.uploadedFileName = null;
+        const labelText = e.target.options[e.target.selectedIndex].text;
+        document.getElementById("uploadedImageStatus").textContent =
+          `Active: ${labelText} (${state.imgWidth}×${state.imgHeight})`;
+        runFullImagePipeline();
+        sample5x5FromImageAt(state.probeX, state.probeY);
+      });
+
+      document.getElementById("imgResolutionSelect").addEventListener("change", (e) => {
+        const res = parseInt(e.target.value, 10) || 160;
+        state.imgWidth = res;
+        state.imgHeight = res;
+        state.probeX = Math.min(res - 1, state.probeX);
+        state.probeY = Math.min(res - 1, state.probeY);
+        runFullImagePipeline();
+        sample5x5FromImageAt(state.probeX, state.probeY);
+        showToast(`Updated image processing resolution to ${res}×${res} px`);
+      });
+
+      document.getElementById("noiseSigmaSelect").addEventListener("change", () => {
+        runFullImagePipeline();
+        sample5x5FromImageAt(state.probeX, state.probeY);
+      });
+
+      document.getElementById("logDisplayMode").addEventListener("change", () => runFullImagePipeline());
+      document.getElementById("dogDisplayMode").addEventListener("change", () => runFullImagePipeline());
+
+      // Probe X / Y numeric inputs
+      const onProbeCoordChange = () => {
+        const px = parseInt(document.getElementById("probeXInput").value, 10) || 0;
+        const py = parseInt(document.getElementById("probeYInput").value, 10) || 0;
+        sample5x5FromImageAt(px, py);
+      };
+      document.getElementById("probeXInput").addEventListener("change", onProbeCoordChange);
+      document.getElementById("probeYInput").addEventListener("change", onProbeCoordChange);
+
+      document.getElementById("autoStrongestEdgeBtn").addEventListener("click", () => {
+        autoLocateStrongestEdgePixel();
+      });
+
+      // Click on Input Image Canvas to Sample 5x5 Patch into Mathematical Calculator
+      const inputCanvas = document.getElementById("canvasInput");
+      inputCanvas.addEventListener("click", (e) => {
+        const rect = inputCanvas.getBoundingClientRect();
+        const cx = Math.floor(((e.clientX - rect.left) / rect.width) * state.imgWidth);
+        const cy = Math.floor(((e.clientY - rect.top) / rect.height) * state.imgHeight);
+        sample5x5FromImageAt(cx, cy);
+        showToast(`Sampled 5×5 neighborhood at pixel (${cx}, ${cy}) from image!`);
+      });
+
+      // File Input Upload
+      const fileInput = document.getElementById("imageUploadInput");
+      fileInput.addEventListener("change", (e) => {
+        const file = e.target.files && e.target.files[0];
+        if (file) handleImageFileUpload(file);
+      });
+
+      // Drag and Drop on Dropzone
+      const dropZone = document.getElementById("imageDropZone");
+      dropZone.addEventListener("click", (e) => {
+        if (e.target.tagName !== "INPUT" && e.target.tagName !== "LABEL") {
+          fileInput.click();
+        }
+      });
+      dropZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        dropZone.classList.add("dropzone-active");
+      });
+      dropZone.addEventListener("dragleave", () => {
+        dropZone.classList.remove("dropzone-active");
+      });
+      dropZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        dropZone.classList.remove("dropzone-active");
+        const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+        if (file) handleImageFileUpload(file);
+      });
+
+      // Paste Image from Clipboard anywhere on page
+      window.addEventListener("paste", (e) => {
+        const items = e.clipboardData && e.clipboardData.items;
+        if (!items) return;
+        for (let i = 0; i < items.length; i++) {
+          if (items[i].type.indexOf("image") !== -1) {
+            const file = items[i].getAsFile();
+            if (file) handleImageFileUpload(file);
+            break;
+          }
+        }
+      });
+
+      // Individual Canvas Download Buttons
+      document.querySelectorAll(".dl-canvas-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const cId = btn.dataset.dlcanvas;
+          const fName = btn.dataset.dlname || "segmented.png";
+          const cEl = document.getElementById(cId);
+          if (!cEl) return;
+          const link = document.createElement("a");
+          link.download = fName;
+          link.href = cEl.toDataURL("image/png");
+          link.click();
+          showToast(`Downloaded ${fName}`);
+        });
+      });
+
+      // Download All Outputs Summary Sheet PNG
+      document.getElementById("downloadComparisonBtn").addEventListener("click", () => {
+        const W = state.imgWidth;
+        const H = state.imgHeight;
+        const pad = 16;
+        const titleH = 26;
+        const cols = 3;
+        const rows = 2;
+        const sheet = document.createElement("canvas");
+        sheet.width = cols * W + (cols + 1) * pad;
+        sheet.height = rows * (H + titleH) + (rows + 1) * pad;
+        const sctx = sheet.getContext("2d");
+        sctx.fillStyle = "#0b0f19";
+        sctx.fillRect(0, 0, sheet.width, sheet.height);
+
+        const items = [
+          { id: "canvasInput",   title: "1. Input Grayscale I(x,y)" },
+          { id: "canvasLog",     title: `2. LoG (sigma=${state.sigmaLog.toFixed(2)})` },
+          { id: "canvasDog",     title: `3. DoG (s1=${state.sigma1Dog.toFixed(2)}, s2=${state.sigma2Dog.toFixed(2)})` },
+          { id: "canvasSobel",   title: "4. Sobel |G|" },
+          { id: "canvasPrewitt", title: "5. Prewitt |G|" },
+          { id: "canvasKirsch",  title: "6. Kirsch Compass" }
+        ];
+
+        sctx.font = "bold 12px Inter, sans-serif";
+        sctx.fillStyle = "#e2e8f0";
+        items.forEach((item, idx) => {
+          const r = Math.floor(idx / cols);
+          const c = idx % cols;
+          const x = pad + c * (W + pad);
+          const y = pad + r * (H + titleH + pad);
+          sctx.fillText(item.title, x, y + 14);
+          const srcCanvas = document.getElementById(item.id);
+          sctx.drawImage(srcCanvas, x, y + titleH, W, H);
+        });
+
+        const link = document.createElement("a");
+        link.download = "edge_segmentation_comparison.png";
+        link.href = sheet.toDataURL("image/png");
+        link.click();
+        showToast("Downloaded 6-panel edge segmentation comparison PNG!");
+      });
+
+      // Copy Python Code Button
+      document.getElementById("copyPythonCodeBtn").addEventListener("click", () => {
+        const codeText = document.getElementById("pythonCodeBlock").textContent;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(codeText).then(() => showToast("Copied Python code to clipboard!")).catch(() => {
+            fallbackCopy(codeText);
+          });
+        } else {
+          fallbackCopy(codeText);
+        }
+      });
+
+      function fallbackCopy(text) {
+        const ta = document.createElement("textarea");
+        ta.value = text;
+        document.body.appendChild(ta);
+        ta.select();
+        try {
+          document.execCommand("copy");
+          showToast("Copied Python code to clipboard!");
+        } catch (err) {
+          showToast("Select and copy code manually.");
+        }
+        document.body.removeChild(ta);
+      }
+    });
+  </script>
+</body>
+</html>
